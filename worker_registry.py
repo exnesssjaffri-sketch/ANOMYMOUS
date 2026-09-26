@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import subprocess
+from typing import Dict, Any
 
 # Worker registry structure
 WORKER_REGISTRY = {
@@ -9,32 +9,34 @@ WORKER_REGISTRY = {
         "available": False,
         "command": "fcc",
         "version": None,
-        "capabilities": ["implementation", "simple coding", "website creation", "bug fixes"],
     },
     "Claude": {
         "available": False,
         "command": "claude",
         "version": None,
-        "capabilities": ["architecture", "complex reasoning", "debugging", "code review"],
     },
     "OpenCode": {
         "available": False,
         "command": "opencode",
         "version": None,
-        "capabilities": ["implementation", "frontend", "full-stack", "refactoring"],
     }
 }
 
-# Detect if a worker is available by checking its command
-def is_worker_available(command):
+# Mock capabilities for testing
+WORKER_CAPABILITIES = {
+    "FCC": ["simple", "implementation", "website creation", "bug fixes"],
+    "Claude": ["architecture", "complex reasoning", "debugging", "code review"],
+    "OpenCode": ["frontend", "full_stack", "implementation", "refactoring"],
+}
+
+def is_worker_available(command: str) -> bool:
     try:
         subprocess.run([command, "--version"], check=True, capture_output=True, text=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
-# Detect worker availability and update registry
-def detect_workers():
+def detect_workers() -> Dict[str, Any]:
     global WORKER_REGISTRY
     for worker_name, worker_info in WORKER_REGISTRY.items():
         worker_info["available"] = is_worker_available(worker_info["command"])
@@ -49,9 +51,3 @@ def detect_workers():
             except subprocess.CalledProcessError:
                 worker_info["version"] = None
     return WORKER_REGISTRY
-
-if __name__ == "__main__":
-    detect_workers()
-    print("Worker Registry:")
-    for worker, info in WORKER_REGISTRY.items():
-        print(f"{worker}: Available = {info['available']}, Command = {info['command']}, Version = {info['version']}")

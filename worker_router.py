@@ -1,54 +1,56 @@
 #!/usr/bin/env python3
 
-import os
+import worker_registry
 
 # Worker capabilities
 WORKER_CAPABILITIES = {
-    "FCC": ["implementation", "simple coding", "website creation", "bug fixes"],
+    "FCC": ["simple", "implementation", "website creation", "bug fixes"],
     "Claude": ["architecture", "complex reasoning", "debugging", "code review"],
-    "OpenCode": ["implementation", "frontend", "full-stack", "refactoring"],
+    "OpenCode": ["frontend", "full_stack", "implementation", "refactoring"],
 }
 
-# Worker registry
-from worker_registry import WORKER_REGISTRY
-
 def select_best_worker(task_classification):
-    available_workers = [worker for worker in WORKER_REGISTRY if WORKER_REGISTRY[worker]["available"]]
+    available_workers = [worker for worker in worker_registry.WORKER_REGISTRY if worker_registry.WORKER_REGISTRY[worker]["available"]]
     if not available_workers:
         raise ValueError("No available workers.")
     
-    # Select the worker with the least overlap in capabilities
-    best_worker = None
-    min_overlap = float('inf')
+    # Prioritize simple tasks with FCC
+    if task_classification.get("simple", False):
+        return "FCC"
     
-    for worker in available_workers:
-        worker_capabilities = WORKER_CAPABILITIES[worker]
-        overlap = sum(1 for capability in task_classification if capability in worker_capabilities)
-        
-        if overlap < min_overlap:
-            min_overlap = overlap
-            best_worker = worker
+    # Frontend tasks with OpenCode
+    if task_classification.get("frontend", False):
+        return "OpenCode"
     
-    return best_worker
+    # Debugging tasks with Claude
+    if task_classification.get("debugging", False):
+        return "Claude"
+    
+    # Complex tasks with Claude
+    if task_classification.get("complex", False):
+        return "Claude"
+    
+    # Default to OpenCode for medium tasks
+    return "OpenCode"
 
 def escalate_worker(task_classification, current_worker):
-    available_workers = [worker for worker in WORKER_REGISTRY if WORKER_REGISTRY[worker]["available"]]
+    available_workers = [worker for worker in worker_registry.WORKER_REGISTRY if worker_registry.WORKER_REGISTRY[worker]["available"]]
     if not available_workers:
         raise ValueError("No available workers.")
     
     # Exclude the current worker
     available_workers = [worker for worker in available_workers if worker != current_worker]
     
-    # Select the worker with the least overlap in capabilities
+    # Select the worker with the best match for the task
     best_worker = None
-    min_overlap = float('inf')
+    best_match = -1
     
     for worker in available_workers:
         worker_capabilities = WORKER_CAPABILITIES[worker]
-        overlap = sum(1 for capability in task_classification if capability in worker_capabilities)
+        match = sum(1 for capability in worker_capabilities if task_classification.get(capability, False))
         
-        if overlap < min_overlap:
-            min_overlap = overlap
+        if match > best_match:
+            best_match = match
             best_worker = worker
     
     return best_worker
