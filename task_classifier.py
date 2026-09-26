@@ -23,6 +23,9 @@ def classify_task(task_description):
     if "website" in task_description.lower() or "button" in task_description.lower():
         task_classification["frontend"] = True
         task_classification["medium"] = True
+        # Ensure simple=True is preserved if it was already set
+        if "simple" not in task_classification:
+            task_classification["simple"] = False
     
     # Complex tasks (e.g., full-stack development)
     if "dashboard" in task_description.lower() or "SaaS" in task_description.lower():
@@ -30,7 +33,7 @@ def classify_task(task_description):
         task_classification["full-stack"] = True
     
     # Debugging tasks
-    if "debug" in task_description.lower() or "error" in task_description.lower():
+    if "debug" in task_description.lower() or "error" in task_description.lower() or "fix" in task_description.lower() or "broken" in task_description.lower() or "crash" in task_description.lower() or "failing" in task_description.lower() or "failure" in task_description.lower() or "exception" in task_description.lower() or "resolve" in task_description.lower() or "repair" in task_description.lower() or "investigate" in task_description.lower():
         task_classification["debugging"] = True
         task_classification["medium"] = True
     

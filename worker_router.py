@@ -21,16 +21,16 @@ def select_best_worker(task_classification):
     if not available_workers:
         raise ValueError("No available workers.")
     
-    # Select the worker with the least overlap in capabilities
+    # Select the worker with the highest capability match
     best_worker = None
-    min_overlap = float('inf')
+    max_overlap = -1
     
     for worker in available_workers:
         worker_capabilities = WORKER_CAPABILITIES[worker]
         overlap = sum(1 for capability in task_classification if capability in worker_capabilities)
         
-        if overlap < min_overlap:
-            min_overlap = overlap
+        if overlap > max_overlap:
+            max_overlap = overlap
             best_worker = worker
     
     return best_worker
@@ -42,14 +42,14 @@ def escalate_worker(task_classification, current_worker):
     
     # Select the next best worker
     best_worker = None
-    min_overlap = float('inf')
+    max_overlap = -1
     
     for worker in available_workers:
         worker_capabilities = WORKER_CAPABILITIES[worker]
         overlap = sum(1 for capability in task_classification if capability in worker_capabilities)
         
-        if overlap < min_overlap:
-            min_overlap = overlap
+        if overlap > max_overlap:
+            max_overlap = overlap
             best_worker = worker
     
     return best_worker

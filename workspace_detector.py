@@ -52,6 +52,12 @@ def detect_project_type(path):
         if project_type == "Generic Project":
             project_type = "Static Website"
     
+    # Ensure non-Git repositories are handled correctly
+    if project_type == "Generic Project" and not is_git_repo(path):
+        # Check for static website again if not a Git repo
+        if "index.html" in files or "index.htm" in files:
+            project_type = "Static Website"
+    
     return project_type
 
 def get_package_manager(path):
