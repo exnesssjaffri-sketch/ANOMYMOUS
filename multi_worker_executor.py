@@ -4,7 +4,7 @@ import os
 import sys
 
 # Import necessary modules
-sys.path.insert(0, os.path.abspath("c:\Users\ALI HAIDER\OneDrive\Desktop\ANOMYMOUS"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from worker_registry import WORKER_REGISTRY
 from task_classifier import classify_task
 from worker_router import select_best_worker, escalate_worker

@@ -4,7 +4,7 @@ import os
 import sys
 
 # Ensure the workspace_detector module is in the path
-sys.path.insert(0, os.path.abspath("c:\Users\ALI HAIDER\OneDrive\Desktop\ANOMYMOUS"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from workspace_detector import detect_workers, classify_task, select_best_worker, recover_from_failure
 

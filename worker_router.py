@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 
 # Import worker registry
-sys.path.insert(0, os.path.abspath("c:\Users\ALI HAIDER\OneDrive\Desktop\ANOMYMOUS"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from worker_registry import detect_workers, WORKER_REGISTRY
 
 # Import task classifier
@@ -16,6 +17,14 @@ WORKER_CAPABILITIES = {
     "OpenCode": ["implementation", "frontend", "full-stack", "refactoring"],
 }
 
+# Capability mapping for task classification flags
+CAPABILITY_MAPPING = {
+    "simple": ["simple coding", "implementation", "bug fixes"],
+    "frontend": ["frontend", "website creation", "implementation"],
+    "debugging": ["debugging", "bug fixes", "code review"],
+    "complex": ["architecture", "complex reasoning", "full-stack"],
+}
+
 def select_best_worker(task_classification):
     available_workers = [worker for worker in WORKER_REGISTRY if WORKER_REGISTRY[worker]["available"]]
     if not available_workers:
@@ -23,14 +32,18 @@ def select_best_worker(task_classification):
     
     # Select the worker with the highest capability match
     best_worker = None
-    max_overlap = -1
+    max_score = -1
     
     for worker in available_workers:
         worker_capabilities = WORKER_CAPABILITIES[worker]
-        overlap = sum(1 for capability in task_classification if capability in worker_capabilities)
+        score = 0
         
-        if overlap > max_overlap:
-            max_overlap = overlap
+        for flag, capabilities in CAPABILITY_MAPPING.items():
+            if task_classification.get(flag, False):
+                score += sum(1 for capability in capabilities if capability in worker_capabilities)
+        
+        if score > max_score:
+            max_score = score
             best_worker = worker
     
     return best_worker
@@ -42,14 +55,18 @@ def escalate_worker(task_classification, current_worker):
     
     # Select the next best worker
     best_worker = None
-    max_overlap = -1
+    max_score = -1
     
     for worker in available_workers:
         worker_capabilities = WORKER_CAPABILITIES[worker]
-        overlap = sum(1 for capability in task_classification if capability in worker_capabilities)
+        score = 0
         
-        if overlap > max_overlap:
-            max_overlap = overlap
+        for flag, capabilities in CAPABILITY_MAPPING.items():
+            if task_classification.get(flag, False):
+                score += sum(1 for capability in capabilities if capability in worker_capabilities)
+        
+        if score > max_score:
+            max_score = score
             best_worker = worker
     
     return best_worker

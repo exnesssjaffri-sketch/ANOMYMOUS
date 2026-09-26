@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
-sys.path.insert(0, os.path.abspath("c:\Users\ALI HAIDER\OneDrive\Desktop\ANOMYMOUS"))
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from task_classifier import classify_task
 from worker_registry import detect_workers
