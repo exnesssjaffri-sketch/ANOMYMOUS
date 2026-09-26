@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from workspace_detector import detect_project_type, is_git_repo, get_package_manager
+
+# Test directory with package.json
+print("=== Directory with package.json ===")
+print(f"detect_project_type: {detect_project_type('temp_dir_package_json')}")
+print(f"is_git_repo: {is_git_repo('temp_dir_package_json')}")
+print(f"get_package_manager: {get_package_manager('temp_dir_package_json')}")
