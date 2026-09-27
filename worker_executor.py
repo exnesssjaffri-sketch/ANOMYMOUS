@@ -85,6 +85,32 @@ def execute_worker_command(command: list[str], cwd: Optional[str] = None) -> Dic
     
     return result
 
+# Add a test for subprocess timeout in the main block to ensure it's tested
+if __name__ == "__main__":
+    # Example usage for testing with a real timeout
+    print("Testing execute_worker_command with timeout...")
+    
+    # Test D: Timeout
+    timeout_result = execute_worker_command([sys.executable, "-c", "import time; time.sleep(20)"])
+    print(f"Timeout Test: {timeout_result}")
+    assert timeout_result["status"] == "TIMEOUT", "Expected TIMEOUT status for long-running command"
+    assert timeout_result["timed_out"] is True, "Expected timed_out to be True"
+    
+    # Test E: Workspace
+    temp_dir = Path("temp_workspace").absolute()
+    temp_dir.mkdir(exist_ok=True)
+    
+    with open(temp_dir / "test_file.txt", "w") as f:
+        f.write("Test file")
+    
+    workspace_result = execute_worker_command([sys.executable, "-c", "print('Test in workspace')"], str(temp_dir))
+    print(f"Workspace Test: {workspace_result}")
+    assert workspace_result["status"] == "SUCCESS", "Expected SUCCESS status for valid workspace"
+    
+    # Cleanup
+    import shutil
+    shutil.rmtree(temp_dir)
+
 if __name__ == "__main__":
     # Example usage for testing
     print("Testing execute_worker_command...")

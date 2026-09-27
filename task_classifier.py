@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 
 def classify_task(task_description):
+    """
+    Classify a task based on its description.
+    
+    Args:
+        task_description: Description of the task.
+    
+    Returns:
+        Dict[str, bool]: Dictionary of task classifications.
+    """
     task_classification = {
         "simple": False,
         "medium": False,

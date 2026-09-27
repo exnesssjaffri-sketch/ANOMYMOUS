@@ -7,6 +7,15 @@ from typing import Dict, Any
 
 # Real website verification logic
 def verify_website(path: str) -> Dict[str, Any]:
+    """
+    Verify a website by checking required files, HTML, JS, CSS, and build status.
+    
+    Args:
+        path: Path to the website directory.
+    
+    Returns:
+        Dict[str, Any] with verification results.
+    """
     path = Path(path)
     files = list(path.iterdir())
     verification_results = {
@@ -89,6 +98,5 @@ if __name__ == "__main__":
     print(f"Verification Results: {verification_results}")
     
     # Cleanup
-    for file in mock_dir.iterdir():
-        file.unlink()
-    mock_dir.rmdir()
+    import shutil
+    shutil.rmtree(mock_dir, ignore_errors=True)
