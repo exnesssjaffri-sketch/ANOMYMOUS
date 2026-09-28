@@ -108,6 +108,19 @@ def _get_orchestrator():
 # API ENDPOINTS
 # =============================================================================
 
+@app.route("/", methods=["GET"])
+def dashboard():
+    """Serve the ANOMYMOUS dashboard at the root path.
+
+    Local development: Flask serves the static file directly.
+    Cloud (Vercel): the vercel.json rewrite ^/$ -> /static/index.html
+    handles this, but having the route here is a safe fallback so the
+    root NEVER returns 404.
+    """
+    static_dir = (PROJECT_ROOT / "static").resolve()
+    return send_from_directory(str(static_dir), "index.html")
+
+
 @app.route("/health", methods=["GET"])
 def health():
     """Health check endpoint."""
