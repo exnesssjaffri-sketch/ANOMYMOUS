@@ -97,7 +97,7 @@ class TaskClassifier:
                 "strategy": "complex",
                 "expected_artifacts": []
             }
-        elif "restaurant" in normalized_text or "website" in normalized_text:
+        elif "restaurant" in normalized_text or "website" in normalized_text or "static site" in normalized_text or ("static" in normalized_text and "site" in normalized_text):
             category = "frontend"
             intent = "website"
             verification = {

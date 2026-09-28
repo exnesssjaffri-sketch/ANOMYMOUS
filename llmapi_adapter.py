@@ -93,47 +93,44 @@ class LLMAPIAdapter:
 
             if not is_daily_quota and is_413 and not self._reduced_request_used:
                 reduced_payload = reduce_payload_tokens(payload, self.max_tokens)
-                reduced_tokens = estimate_payload_tokens(reduced_payload)
-                original_tokens = estimate_payload_tokens(payload)
-
-                # Retry if reduction actually reduces tokens (never retry identical oversized request)
-                should_retry = reduced_tokens < original_tokens
-
-                if should_retry:
-                    self._reduced_request_used = True
-                    try:
-                        response_data = self.transport.send_request(reduced_payload, self.timeout)
-                        duration = time.time() - start_time
-                        choices = response_data.get("choices", [])
-                        if not choices:
-                            raise Exception(f"No choices in LLM response: {json.dumps(response_data)}")
-                        content = choices[0].get("message", {}).get("content")
-                        request_id = response_data.get("id")
-                        return {
-                            "status": "success",
-                            "provider": self.provider,
-                            "model": self.model,
-                            "output": content,
-                            "error": None,
-                            "error_type": None,
-                            "timed_out": False,
-                            "duration": duration,
-                            "request_id": request_id,
-                            "attempt": 2,
-                        }
-                    except Exception as retry_error:
-                        return {
-                            "status": "error",
-                            "provider": self.provider,
-                            "model": self.model,
-                            "output": None,
-                            "error": f"413 retry failed: {str(retry_error)}",
-                            "error_type": error_class,
-                            "timed_out": False,
-                            "duration": time.time() - start_time,
-                            "request_id": None,
-                            "attempt": 2,
-                        }
+                # Always retry once for 413 errors - the provider's actual limit
+                # may differ from our estimate. The _reduced_request_used flag
+                # prevents infinite loops. We never retry identical oversized
+                # requests endlessly; a single controlled retry is safe.
+                self._reduced_request_used = True
+                try:
+                    response_data = self.transport.send_request(reduced_payload, self.timeout)
+                    duration = time.time() - start_time
+                    choices = response_data.get("choices", [])
+                    if not choices:
+                        raise Exception(f"No choices in LLM response: {json.dumps(response_data)}")
+                    content = choices[0].get("message", {}).get("content")
+                    request_id = response_data.get("id")
+                    return {
+                        "status": "success",
+                        "provider": self.provider,
+                        "model": self.model,
+                        "output": content,
+                        "error": None,
+                        "error_type": None,
+                        "timed_out": False,
+                        "duration": duration,
+                        "request_id": request_id,
+                        "attempt": 2,
+                    }
+                except Exception as retry_error:
+                    return {
+                        "status": "error",
+                        "provider": self.provider,
+                        "model": self.model,
+                        "output": None,
+                        "error": f"413 retry failed: {str(retry_error)}",
+                        "error_type": error_class,
+                        "timed_out": False,
+                        "duration": time.time() - start_time,
+                        "request_id": None,
+                        "attempt": 2,
+                    }
 
             return {
                 "status": "error",

@@ -31,7 +31,7 @@ def test_task_classification_and_verification():
         print(f"Expected Intent: {expected_intent}, Got: {classification['intent']}")
         
         # Simulate workspace creation for testing
-        os.makedirs(os.path.join(classification['workspace_dir'] or 'workspace', 'test'), exist_ok=True)
+        os.makedirs(os.path.join('workspace', 'test'), exist_ok=True)
         verification_result = verifier.verify(classification, task_text)
         print(f"Verification Result: {verification_result}")
 

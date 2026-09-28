@@ -9,3 +9,14 @@
 127.0.0.1 - - [29/Sep/2026 00:58:40] "GET /providers HTTP/1.1" 200 -
 127.0.0.1 - - [29/Sep/2026 00:58:40] "GET /analytics HTTP/1.1" 200 -
 127.0.0.1 - - [29/Sep/2026 01:03:07] "GET /static/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:12] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:12] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:12] "GET /status HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:12] "GET /static/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:12] code 403, message Forbidden
+127.0.0.1 - - [29/Sep/2026 01:23:12] "GET /static/../server.py HTTP/1.1" 403 -
+127.0.0.1 - - [29/Sep/2026 01:23:33] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:33] "GET /status HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:33] "GET /static/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [29/Sep/2026 01:23:33] code 403, message Forbidden
+127.0.0.1 - - [29/Sep/2026 01:23:33] "GET /static/../server.py HTTP/1.1" 403 -
