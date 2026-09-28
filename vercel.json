@@ -2,9 +2,12 @@
   "buildCommand": "pip install -r requirements.txt",
   "outputDirectory": ".",
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/app.py"
-    }
+    { "source": "^/$", "destination": "/static/index.html" },
+    { "source": "^/health$", "destination": "/api/app.py" },
+    { "source": "^/task$", "destination": "/api/app.py" },
+    { "source": "^/status$", "destination": "/api/app.py" },
+    { "source": "^/providers$", "destination": "/api/app.py" },
+    { "source": "^/analytics$", "destination": "/api/app.py" },
+    { "source": "^/capabilities$", "destination": "/api/app.py" }
   ]
 }
