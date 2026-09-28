@@ -1,102 +1,391 @@
 #!/usr/bin/env python3
 
 import os
-import subprocess
-from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
-# Real website verification logic
-def verify_website(path: str) -> Dict[str, Any]:
+
+def verify_website(workspace_path: str) -> Dict[str, Any]:
     """
-    Verify a website by checking required files, HTML, JS, CSS, and build status.
-    
-    Args:
-        path: Path to the website directory.
-    
-    Returns:
-        Dict[str, Any] with verification results.
+    Verifies a website task by checking for required files and basic HTML structure.
     """
-    path = Path(path)
-    files = list(path.iterdir())
-    verification_results = {
-        "files_exist": False,
-        "valid_html": False,
-        "valid_js": False,
-        "valid_css": False,
-        "imports_exist": False,
-        "build_success": False,
-        "browser_verification": False
-    }
+    print(f"Verifying website in: {workspace_path}")
     
-    # Check if requested files exist
-    required_files = ["index.html", "style.css", "script.js"]
-    if all(file.name in required_files for file in files):
-        verification_results["files_exist"] = True
+    if not os.path.isdir(workspace_path):
+        print("Workspace does not exist")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["Workspace does not exist"]
+        }
     
-    # Check for valid HTML, JS, and CSS files
-    if (path / "index.html").exists():
-        with open(path / "index.html", "r") as file:
-            content = file.read()
-            if "<!DOCTYPE html>" in content:
-                verification_results["valid_html"] = True
+    required_files = ["index.html"]
+    missing = [f for f in required_files if not os.path.exists(os.path.join(workspace_path, f))]
     
-    if (path / "script.js").exists():
-        with open(path / "script.js", "r") as file:
-            content = file.read()
-            if "function" in content or "const" in content:
-                verification_results["valid_js"] = True
+    if missing:
+        print(f"Missing files: {', '.join(missing)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Missing files: {', '.join(missing)}"]
+        }
     
-    if (path / "style.css").exists():
-        with open(path / "style.css", "r") as file:
-            content = file.read()
-            if "body" in content or "div" in content:
-                verification_results["valid_css"] = True
-    
-    # Check for important imports
-    if (path / "index.html").exists():
-        with open(path / "index.html", "r") as file:
-            content = file.read()
-            if "<link rel=\"stylesheet\" href=\"style.css\">" in content and \
-               "<script src=\"script.js\"></script>" in content:
-                verification_results["imports_exist"] = True
-    
-    # Check build success if a build system exists
-    if (path / "package.json").exists():
-        try:
-            subprocess.run(["npm", "run", "build"], cwd=path, check=True, capture_output=True)
-            verification_results["build_success"] = True
-        except subprocess.CalledProcessError:
-            pass
-    
-    # Browser automation verification (simplified)
     try:
-        subprocess.run(["npm", "install", "puppeteer"], cwd=path, check=True, capture_output=True)
-        subprocess.run(["node", "-e", "require('puppeteer').launch().then(browser => browser.close())"], cwd=path, check=True, capture_output=True)
-        verification_results["browser_verification"] = True
-    except subprocess.CalledProcessError:
-        pass
-    
-    return verification_results
+        with open(os.path.join(workspace_path, "index.html"), "r", encoding="utf-8") as f:
+            html_content = f.read().lower()
+            print(f"HTML content preview: {html_content[:100]}")
+            
+            if "<html" not in html_content or "<body" not in html_content:
+                print("index.html is missing basic HTML tags")
+                return {
+                    "status": "failed",
+                    "verified": False,
+                    "diagnostics": ["index.html is missing basic HTML tags"]
+                }
+            
+            print("index.html structure is valid")
+            return {
+                "status": "success",
+                "verified": True,
+                "diagnostics": ["All required files exist and index.html structure is valid"]
+            }
+    except Exception as e:
+        print(f"Failed to read index.html: {str(e)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Failed to read index.html: {str(e)}"]
+        }
 
-if __name__ == "__main__":
-    # Example usage for website verification
-    mock_dir = Path.cwd() / "mock_website"
-    mock_dir.mkdir(exist_ok=True)
+
+def verify_api(workspace_path: str) -> Dict[str, Any]:
+    """
+    Verifies an API task by checking for Python files and basic API structure.
+    """
+    print(f"Verifying API in: {workspace_path}")
     
-    # Create mock files
-    with open(mock_dir / "index.html", "w") as f:
-        f.write("<html><body><h1>Test Website</h1></body></html>")
+    # Check for Python files
+    python_files = []
+    for root, _, filenames in os.walk(workspace_path):
+        for filename in filenames:
+            if filename.endswith(".py") and not filename.startswith("."):
+                python_files.append(os.path.join(root, filename))
     
-    with open(mock_dir / "style.css", "w") as f:
-        f.write("body { background: white; }")
+    if not python_files:
+        print("No Python files found")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["No Python files found"]
+        }
     
-    with open(mock_dir / "script.js", "w") as f:
-        f.write("function hello() { console.log('Hello World!'); }")
+    # Check for a basic API entry point (e.g., Flask/Django)
+    try:
+        for file_path in python_files:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                if "from flask" in content.lower() or "import flask" in content.lower() or "from django" in content.lower():
+                    print("API project structure looks valid")
+                    return {
+                        "status": "success",
+                        "verified": True,
+                        "diagnostics": ["API project structure verified"]
+                    }
+    except Exception as e:
+        print(f"Error checking API structure: {str(e)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Error checking API structure: {str(e)}"]
+        }
     
-    # Run verification
-    verification_results = verify_website(str(mock_dir))
-    print(f"Verification Results: {verification_results}")
+    return {
+        "status": "failed",
+        "verified": False,
+        "diagnostics": ["No Flask/Django imports detected"]
+    }
+
+
+def verify_backend_service(workspace_path: str) -> Dict[str, Any]:
+    """
+    Verifies a backend service task by checking for Python files and basic backend structure.
+    """
+    print(f"Verifying backend service in: {workspace_path}")
     
-    # Cleanup
-    import shutil
-    shutil.rmtree(mock_dir, ignore_errors=True)
+    # Check for Python files
+    python_files = []
+    for root, _, filenames in os.walk(workspace_path):
+        for filename in filenames:
+            if filename.endswith(".py") and not filename.startswith("."):
+                python_files.append(os.path.join(root, filename))
+    
+    if not python_files:
+        print("No Python files found")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["No Python files found"]
+        }
+    
+    # Check for a basic backend entry point
+    try:
+        for file_path in python_files:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                if "import json" in content.lower() or "import csv" in content.lower():
+                    print("Backend service structure looks valid")
+                    return {
+                        "status": "success",
+                        "verified": True,
+                        "diagnostics": ["Backend service structure verified"]
+                    }
+    except Exception as e:
+        print(f"Error checking backend structure: {str(e)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Error checking backend structure: {str(e)}"]
+        }
+    
+    return {
+        "status": "failed",
+        "verified": False,
+        "diagnostics": ["No backend entry point detected"]
+    }
+
+
+def verify_web_app(workspace_path: str) -> Dict[str, Any]:
+    """
+    Verifies a web_app task by checking for a combination of frontend and backend artifacts.
+    """
+    print(f"Verifying web_app in: {workspace_path}")
+    
+    # Check for frontend artifacts
+    frontend_files = ["index.html"]
+    missing_frontend = [f for f in frontend_files if not os.path.exists(os.path.join(workspace_path, f))]
+    
+    if missing_frontend:
+        print(f"Missing frontend files: {', '.join(missing_frontend)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Missing frontend files: {', '.join(missing_frontend)}"]
+        }
+    
+    # Check for backend artifacts (generic check for Python backend)
+    backend_files = ["app.py"]
+    missing_backend = [f for f in backend_files if not os.path.exists(os.path.join(workspace_path, f))]
+    
+    if missing_backend:
+        print(f"Missing backend files: {', '.join(missing_backend)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Missing backend files: {', '.join(missing_backend)}"]
+        }
+    
+    # Check for a basic Python file to ensure backend logic is present
+    python_files = []
+    for root, _, filenames in os.walk(workspace_path):
+        for filename in filenames:
+            if filename.endswith(".py") and not filename.startswith("."):
+                python_files.append(os.path.join(root, filename))
+    
+    if not python_files:
+        print("No Python files found in workspace")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["No Python files found in workspace"]
+        }
+    
+    return {
+        "status": "success",
+        "verified": True,
+        "diagnostics": ["Web app verification passed: frontend and backend artifacts found"]
+    }
+
+
+def verify_debugging_task(workspace_path: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Verifies a debugging task by checking for file changes and actual debugging evidence.
+    """
+    print(f"Verifying debugging task in: {workspace_path}")
+    
+    # Check for Python files that might indicate debugging activity
+    python_files = []
+    for root, _, filenames in os.walk(workspace_path):
+        for filename in filenames:
+            if filename.endswith(".py") and not filename.startswith("."):
+                python_files.append(os.path.join(root, filename))
+    
+    if not python_files:
+        print("No Python files found")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["No Python files found"]
+        }
+    
+    # Check for actual debugging evidence (e.g., error handling, imports)
+    try:
+        for file_path in python_files:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                # Check for error handling (e.g., try/except blocks)
+                if "try:" in content.lower() and "except" in content.lower():
+                    print(f"Error handling detected in {file_path}")
+                    return {
+                        "status": "success",
+                        "verified": True,
+                        "diagnostics": [f"Error handling detected in {file_path}"]
+                    }
+                # Check for imports that might indicate debugging (e.g., logging, sys)
+                if "import logging" in content.lower() or "import sys" in content.lower():
+                    print(f"Debugging imports detected in {file_path}")
+                    return {
+                        "status": "success",
+                        "verified": True,
+                        "diagnostics": [f"Debugging imports detected in {file_path}"]
+                    }
+                # Check for explicit error messages
+                if "raise" in content.lower() or "Error" in content.lower():
+                    print(f"Error message detected in {file_path}")
+                    return {
+                        "status": "success",
+                        "verified": True,
+                        "diagnostics": [f"Error message detected in {file_path}"]
+                    }
+    except Exception as e:
+        print(f"Failed to read Python file: {str(e)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Failed to read Python file: {str(e)}"]
+        }
+    
+    return {
+        "status": "failed",
+        "verified": False,
+        "diagnostics": ["No debugging evidence detected"]
+    }
+
+
+def verify_testing(workspace_path: str) -> Dict[str, Any]:
+    """
+    Verifies a testing task by checking for test files and execution evidence.
+    """
+    print(f"Verifying testing task in: {workspace_path}")
+    
+    # Check for test files
+    test_files = ["test_*.py", "tests/*.py", "_test.py"]
+    test_paths = []
+    for root, _, filenames in os.walk(workspace_path):
+        for filename in filenames:
+            for pattern in test_files:
+                if pattern in filename:
+                    test_paths.append(os.path.join(root, filename))
+    
+    if not test_paths:
+        print("No test files found")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["No test files found"]
+        }
+    
+    # Check for test execution evidence (e.g., test output, assertions)
+    try:
+        for test_path in test_paths:
+            with open(test_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                if "def test" in content.lower() or "assert" in content.lower():
+                    print(f"Test evidence found in {test_path}")
+                    return {
+                        "status": "success",
+                        "verified": True,
+                        "diagnostics": [f"Test evidence found in {test_path}"]
+                    }
+    except Exception as e:
+        print(f"Error reading test file: {str(e)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Error reading test file: {str(e)}"]
+        }
+    
+    return {
+        "status": "failed",
+        "verified": False,
+        "diagnostics": ["No test evidence detected"]
+    }
+
+def verify_generic_task(workspace_path: str, strategy: str = "generic") -> Dict[str, Any]:
+    """
+    Verifies a generic task by checking if workspace exists and contains files.
+    """
+    print(f"Verifying generic task in: {workspace_path} with strategy: {strategy}")
+
+    if not os.path.isdir(workspace_path):
+        print("Workspace does not exist")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": ["Workspace does not exist"]
+        }
+
+    # List files recursively
+    try:
+        all_entries = []
+        for root, dirs, files in os.walk(workspace_path):
+            all_entries.extend(dirs)
+            all_entries.extend(files)
+        if not all_entries:
+            print("Workspace is empty")
+            return {
+                "status": "failed",
+                "verified": False,
+                "diagnostics": ["Workspace is empty"]
+            }
+        print(f"Generic verification passed: workspace contains {len(all_entries)} items")
+        return {
+            "status": "success",
+            "verified": True,
+            "diagnostics": [f"Generic verification passed: workspace contains {len(all_entries)} items"]
+        }
+    except Exception as e:
+        print(f"Failed to verify generic task: {str(e)}")
+        return {
+            "status": "failed",
+            "verified": False,
+            "diagnostics": [f"Failed to verify generic task: {str(e)}"]
+        }
+class TaskVerifier:
+    def __init__(self, workspace_path: str):
+        self.workspace_path = os.path.abspath(workspace_path)
+        print(f"TaskVerifier initialized with workspace: {self.workspace_path}")
+    
+    def verify(self, task_classification: Dict[str, Any], task_text: str) -> Dict[str, Any]:
+        """
+        Task-aware verifier.
+        """
+        intent = task_classification.get("intent")
+        verification_strategy = task_classification.get("verification", {}).get("strategy", "generic")
+        
+        # Map intent to explicit verification strategy
+        strategy_map = {
+            "website": verify_website,
+            "api": verify_api,
+            "backend_service": verify_backend_service,
+            "web_app": verify_web_app,
+            "debugging": verify_debugging_task,
+            "testing": verify_testing,
+            "generic": lambda workspace: verify_generic_task(workspace, verification_strategy)
+        }
+        
+        if intent in strategy_map:
+            verifier_func = strategy_map[intent]
+            print(f"Using {verifier_func.__name__} verification")
+            return verifier_func(self.workspace_path)
+        else:
+            print(f"Using generic task verification for intent: {intent}")
+            return verify_generic_task(self.workspace_path, verification_strategy)

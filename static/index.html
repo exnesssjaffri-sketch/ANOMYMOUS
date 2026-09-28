@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ANOMYMOUS Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #status { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>ANOMYMOUS</h1>
+    <textarea id="taskInput" rows="4" cols="50" placeholder="Enter task description"></textarea><br>
+    <button id="runBtn">RUN</button>
+    <pre id="status"></pre>
+    <script>
+        const statusEl = document.getElementById('status');
+        const runBtn = document.getElementById('runBtn');
+        const taskInput = document.getElementById('taskInput');
+        runBtn.addEventListener('click', async () => {
+            const task = taskInput.value.trim();
+            if (!task) { alert('Task cannot be empty'); return; }
+            statusEl.textContent = 'Submitting task...';
+            const resp = await fetch('/task', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task }) });
+            if (!resp.ok) { statusEl.textContent = 'Error submitting task'; return; }
+            statusEl.textContent = 'Task submitted. Waiting for result...';
+            // Poll for result
+            const poll = async () => {
+                const res = await fetch('/status');
+                const data = await res.json();
+                if (data && data.status) {
+                    statusEl.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    setTimeout(poll, 1000);
+                }
+            };
+            poll();
+        });
+    </script>
+</body>
+</html>

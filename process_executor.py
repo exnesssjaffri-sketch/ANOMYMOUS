@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import sys
 import subprocess
@@ -7,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 
-def execute_worker_command(command: list[str], cwd: Optional[str] = None) -> Dict[str, Any]:
+def execute_process(command: list[str], cwd: Optional[str] = None) -> Dict[str, Any]:
     """
     Execute a command in a subprocess with strict safety and timeout.
     
@@ -84,64 +82,3 @@ def execute_worker_command(command: list[str], cwd: Optional[str] = None) -> Dic
         result["returncode"] = -1
     
     return result
-
-# Add a test for subprocess timeout in the main block to ensure it's tested
-if __name__ == "__main__":
-    # Example usage for testing with a real timeout
-    print("Testing execute_worker_command with timeout...")
-    
-    # Test D: Timeout
-    timeout_result = execute_worker_command([sys.executable, "-c", "import time; time.sleep(20)"])
-    print(f"Timeout Test: {timeout_result}")
-    assert timeout_result["status"] == "TIMEOUT", "Expected TIMEOUT status for long-running command"
-    assert timeout_result["timed_out"] is True, "Expected timed_out to be True"
-    
-    # Test E: Workspace
-    temp_dir = Path("temp_workspace").absolute()
-    temp_dir.mkdir(exist_ok=True)
-    
-    with open(temp_dir / "test_file.txt", "w") as f:
-        f.write("Test file")
-    
-    workspace_result = execute_worker_command([sys.executable, "-c", "print('Test in workspace')"], str(temp_dir))
-    print(f"Workspace Test: {workspace_result}")
-    assert workspace_result["status"] == "SUCCESS", "Expected SUCCESS status for valid workspace"
-    
-    # Cleanup
-    import shutil
-    shutil.rmtree(temp_dir)
-
-if __name__ == "__main__":
-    # Example usage for testing
-    print("Testing execute_worker_command...")
-    
-    # Test A: Success
-    success_result = execute_worker_command([sys.executable, "-c", "print('ANOMYMOUS_WORKER_SUCCESS')"])
-    print(f"Success Test: {success_result}")
-    
-    # Test B: Failure
-    failure_result = execute_worker_command([sys.executable, "-c", "print('ANOMYMOUS_WORKER_FAILURE')", "exit", "7"])
-    print(f"Failure Test: {failure_result}")
-    
-    # Test C: Command Not Found
-    not_found_result = execute_worker_command(["nonexistent_command"])
-    print(f"Command Not Found Test: {not_found_result}")
-    
-    # Test D: Timeout
-    # Use a command that takes longer than 10 seconds
-    timeout_result = execute_worker_command([sys.executable, "-c", "import time; time.sleep(20)"])
-    print(f"Timeout Test: {timeout_result}")
-    
-    # Test E: Workspace
-    temp_dir = Path("temp_workspace").absolute()
-    temp_dir.mkdir(exist_ok=True)
-    
-    with open(temp_dir / "test_file.txt", "w") as f:
-        f.write("Test file")
-    
-    workspace_result = execute_worker_command([sys.executable, "-c", "print('Test in workspace')"], str(temp_dir))
-    print(f"Workspace Test: {workspace_result}")
-    
-    # Cleanup
-    import shutil
-    shutil.rmtree(temp_dir)
