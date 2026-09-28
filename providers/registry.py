@@ -1,0 +1,154 @@
+"""Provider Registry - Central registry for LLM provider configurations and transports."""
+import os
+import json
+from typing import Dict, Any, List, Optional
+
+from providers.base import (
+    AuthType,
+    ModelInfo,
+    ProviderConfig,
+    ProviderCapability,
+)
+
+_provider_configs: Dict[str, Any] = {}
+_transport_factories: Dict[str, Any] = {}
+
+
+def register_provider(name, config, transport_factory=None):
+    _provider_configs[name] = config
+    if transport_factory:
+        _transport_factories[name] = transport_factory
+
+
+def get_config(name):
+    return _provider_configs.get(name)
+
+
+def list_providers():
+    return list(_provider_configs.keys())
+"""Create a transport instance for the given provider."""
+def create_transport(provider_name, api_key=None, endpoint=None):
+    """Create a transport instance for the given provider.
+
+    Args:
+        provider_name: Registered provider name
+        api_key: API key (if None, reads from auth_env_var)
+        endpoint: Optional endpoint override
+
+    Returns:
+        Transport instance
+
+    Raises:
+        ValueError: If provider is not registered
+    """
+    config = _provider_configs.get(provider_name)
+    if not config:
+        raise ValueError(f"Provider '{provider_name}' is not registered")
+
+    # Use provided key or read from env var
+    key = api_key
+    if not key:
+        key = os.getenv(config.auth_env_var)
+
+    # Use provided endpoint or config endpoint
+    url = endpoint or config.endpoint
+
+    # Determine transport type based on auth requirements
+    if config.requires_auth and not key:
+        if config.anonymous_access:
+            # Use anonymous access mode
+            return create_anonymous_transport(provider_name, config)
+        else:
+            raise ValueError(
+                f"Provider '{provider_name}' requires authentication. "
+                f"Set '{config.auth_env_var}' environment variable."
+            )
+
+    # Create standard transport
+    try:
+        from transport import RealHTTPTransport
+        return RealHTTPTransport(url, key or "")
+    except ImportError:
+        from transport import MockTransport
+        return MockTransport()
+
+
+def create_anonymous_transport(provider_name, config):
+    """Create a transport that allows anonymous/limited access."""
+    from transport import MockTransport
+    # Return mock transport that simulates limited anonymous access
+    return MockTransport({})
+
+
+def create_routes(provider_name, transport=None, max_candidates=3):
+    """Create ProviderRoute instances for a registered provider.
+
+    Args:
+        provider_name: Registered provider name
+        transport: Optional transport instance (creates one if None)
+        max_candidates: Maximum number of routes to create
+
+    Returns:
+        List of ProviderRoute instances
+    """
+    from llmapi_router import ProviderRoute, LLMAPIRouter
+    from llmapi_adapter import LLMAPIAdapter
+    from transport import Transport
+
+    config = _provider_configs.get(provider_name)
+    if not config:
+        raise ValueError(f"Provider '{provider_name}' is not registered")
+
+    # Use provided transport or create one
+    if transport is None:
+        transport = create_transport(provider_name)
+
+    # Create routes for default models
+    routes = []
+    models_to_use = config.default_models[:max_candidates]
+
+    # Also include all_models if default_models is empty
+    models = models_to_use if models_to_use else config.all_models[:max_candidates]
+
+    for model_info in models:
+        route = ProviderRoute(
+            provider=provider_name,
+            model=model_info.id,
+            transport=transport,
+            max_tokens=model_info.context_window,
+            priority=model_info.tier_weight if hasattr(model_info, 'tier_weight') else 1,
+            weight=model_info.weight if hasattr(model_info, 'weight') else 1.0,
+        )
+        routes.append(route)
+
+    return routes
+
+
+def get_provider_info(provider_name):
+    """Get human-readable info about a provider."""
+    config = _provider_configs.get(provider_name)
+    if not config:
+        return None
+
+    models_info = []
+    for model in config.all_models:
+        models_info.append({
+            "id": model.id,
+            "name": model.name,
+            "context_window": model.context_window,
+            "supports": [c.value for c in model.supports],
+        })
+
+    return {
+        "name": config.display_name,
+        "endpoint": config.endpoint,
+        "auth_type": config.auth_type.value,
+        "requires_auth": config.requires_auth,
+        "anonymous_access": config.anonymous_access,
+        "rate_limit_info": config.rate_limit_info,
+        "default_models": [
+            {"id": m.id, "name": m.name, "context_window": m.context_window}
+            for m in config.default_models
+        ],
+        "all_models": models_info,
+    }

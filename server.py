@@ -5,6 +5,8 @@ Endpoints:
     GET /health            - returns JSON {"status": "ok"}
     POST /task             - JSON {"task": "..."} to submit a task
     GET /status            - returns the latest task result (in-memory)
+    GET /providers         - returns list of registered providers
+    GET /analytics         - returns analytics summary
     GET /static/<file>     - serves static files (HTML/JS/CSS) for the UI
 """
 
@@ -16,13 +18,20 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from threading import Thread
-from transport import MockTransport
+from transport import MockTransport, RealHTTPTransport
 from orchestrator import Orchestrator
+
+# Import providers module for registry access
+import providers
+from providers.analytics import analytics
+from config import REAL_TRANSPORT_CONFIG
 
 # Global state (simple in-memory storage)
 latest_result = None
 
-# Use mock transport for testing
+# Use RealHTTPTransport by default for production
+# MockTransport is only used in tests or when explicitly configured via env var
+if os.getenv("ANOMYMOUS_USE_MOCK", "0") == "1":
 mock_transport = MockTransport({
     "Create a simple restaurant website with:": {
         "output": json.dumps({
@@ -59,7 +68,15 @@ mock_transport = MockTransport({
     }
 })
 
-orchestrator = Orchestrator(provider="mock", model="mock-model", transport=mock_transport)
+if os.getenv("ANOMYMOUS_USE_MOCK", "0") == "1":
+    transport = mock_transport
+else:
+    transport = RealHTTPTransport(
+        REAL_TRANSPORT_CONFIG["endpoint"],
+        REAL_TRANSPORT_CONFIG["api_key"]
+    )
+
+orchestrator = Orchestrator(provider="groq", model="llama-3.1-8b-instant", transport=transport)
 
 
 class SimpleHandler(BaseHTTPRequestHandler):
@@ -78,6 +95,30 @@ class SimpleHandler(BaseHTTPRequestHandler):
         elif path == "/status":
             self._set_json(200)
             self.wfile.write(json.dumps(latest_result or {"status": "no_task_yet"}).encode())
+        elif path == "/providers":
+            self._set_json(200)
+            provider_list = []
+            for p in providers.list_providers():
+                info = providers.get_provider_info(p)
+                if info:
+                    provider_list.append({
+                        "name": p,
+                        "display_name": info["name"],
+                        "endpoint": info["endpoint"],
+                        "auth_type": info["auth_type"],
+                        "requires_auth": info["requires_auth"],
+                        "anonymous_access": info["anonymous_access"],
+                        "rate_limit_info": info["rate_limit_info"],
+                        "model_count": len(info["all_models"]),
+                    })
+            self.wfile.write(json.dumps({
+                "providers": provider_list,
+                "count": len(provider_list),
+            }).encode())
+        elif path == "/analytics":
+            self._set_json(200)
+            summary = analytics.get_summary()
+            self.wfile.write(json.dumps(summary, indent=2).encode())
         elif path.startswith("/static/"):
             # Serve static files from the static/ directory
             filename = path[len("/static/"):]

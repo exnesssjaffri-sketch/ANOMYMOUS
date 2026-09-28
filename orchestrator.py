@@ -10,7 +10,7 @@ from action_executor import ActionExecutor
 from verification import TaskVerifier
 
 class Orchestrator:
-    def __init__(self, provider: str, model: str, transport: Transport = None, endpoint: str = None, api_key: str = None, workspace_dir: Optional[str] = None):
+    def __init__(self, provider: str, model: str, transport: Transport = None, endpoint: str = None, api_key: str = None, workspace_dir: Optional[str] = None, max_tokens: int = 7000):
         # Use RealHTTPTransport if endpoint and api_key are provided, else use MockTransport
         if transport is None:
             if endpoint and api_key:
@@ -20,7 +20,7 @@ class Orchestrator:
                 from transport import MockTransport
                 transport = MockTransport()
         
-        self.llmapi_adapter = LLMAPIAdapter(provider, model, transport)
+        self.llmapi_adapter = LLMAPIAdapter(provider, model, transport, max_tokens=max_tokens)
         self.task_classifier = TaskClassifier()
         
         # Set up safe workspace

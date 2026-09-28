@@ -76,7 +76,13 @@ class RealHTTPTransport(Transport):
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            error_body = e.response.json() if e.response else str(e)
+            error_body = ""
+            if e.response:
+                try:
+                    error_body = e.response.json()
+                except Exception:
+                    error_body = e.response.text
+            # Preserve error details in exception for 413 handling
             raise Exception(f"HTTP Error {e.response.status_code}: {json.dumps(error_body)}")
         except requests.exceptions.RequestException as e:
             raise Exception(f"Transport Error: {str(e)}")

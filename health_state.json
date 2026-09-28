@@ -1,0 +1,101 @@
+{
+  "groq/llama-3.1-70b": {
+    "provider": "groq",
+    "model": "llama-3.1-70b",
+    "consecutive_failures": 8,
+    "last_success": 0,
+    "last_failure": 1790600291.3375306,
+    "last_error_category": "all_models_rate_limited",
+    "total_requests": 8,
+    "successful_requests": 0,
+    "failed_requests": 8,
+    "error_history": [
+      {
+        "timestamp": 1790600207.7558484,
+        "error_category": "rate_limit"
+      },
+      {
+        "timestamp": 1790600207.7872808,
+        "error_category": "unavailable"
+      },
+      {
+        "timestamp": 1790600207.8549562,
+        "error_category": "daily_quota_exhausted"
+      },
+      {
+        "timestamp": 1790600207.8816361,
+        "error_category": "all_models_rate_limited"
+      },
+      {
+        "timestamp": 1790600287.3853076,
+        "error_category": "rate_limit"
+      },
+      {
+        "timestamp": 1790600288.6173892,
+        "error_category": "unavailable"
+      },
+      {
+        "timestamp": 1790600290.5809612,
+        "error_category": "daily_quota_exhausted"
+      },
+      {
+        "timestamp": 1790600291.337532,
+        "error_category": "all_models_rate_limited"
+      }
+    ]
+  },
+  "groq/llama-3.1-8b": {
+    "provider": "groq",
+    "model": "llama-3.1-8b",
+    "consecutive_failures": 0,
+    "last_success": 1790600290.5840914,
+    "last_failure": 0,
+    "last_error_category": null,
+    "total_requests": 5,
+    "successful_requests": 5,
+    "failed_requests": 0,
+    "error_history": []
+  },
+  "cerebras/llama-3.1-8b": {
+    "provider": "cerebras",
+    "model": "llama-3.1-8b",
+    "consecutive_failures": 0,
+    "last_success": 1790600291.339827,
+    "last_failure": 1790600288.613975,
+    "last_error_category": "unavailable",
+    "total_requests": 4,
+    "successful_requests": 2,
+    "failed_requests": 2,
+    "error_history": [
+      {
+        "timestamp": 1790600207.7954338,
+        "error_category": "unavailable"
+      },
+      {
+        "timestamp": 1790600288.6139765,
+        "error_category": "unavailable"
+      }
+    ]
+  },
+  "test/test-model": {
+    "provider": "test",
+    "model": "test-model",
+    "consecutive_failures": 0,
+    "last_success": 1790600292.1085978,
+    "last_failure": 1790600289.803443,
+    "last_error_category": "request_too_large",
+    "total_requests": 6,
+    "successful_requests": 4,
+    "failed_requests": 2,
+    "error_history": [
+      {
+        "timestamp": 1790600207.8256602,
+        "error_category": "request_too_large"
+      },
+      {
+        "timestamp": 1790600289.8034441,
+        "error_category": "request_too_large"
+      }
+    ]
+  }
+}

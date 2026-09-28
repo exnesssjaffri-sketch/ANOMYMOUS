@@ -18,15 +18,20 @@ def verify_website(workspace_path: str) -> Dict[str, Any]:
             "diagnostics": ["Workspace does not exist"]
         }
     
-    required_files = ["index.html"]
-    missing = [f for f in required_files if not os.path.exists(os.path.join(workspace_path, f))]
+    # Search for index.html recursively or in root
+    index_path = os.path.join(workspace_path, "index.html")
+    if not os.path.exists(index_path):
+        for root, _, files in os.walk(workspace_path):
+            if "index.html" in files:
+                index_path = os.path.join(root, "index.html")
+                break
     
-    if missing:
-        print(f"Missing files: {', '.join(missing)}")
+    if not os.path.exists(index_path):
+        print("Missing files: index.html")
         return {
             "status": "failed",
             "verified": False,
-            "diagnostics": [f"Missing files: {', '.join(missing)}"]
+            "diagnostics": ["Missing files: index.html"]
         }
     
     try:
