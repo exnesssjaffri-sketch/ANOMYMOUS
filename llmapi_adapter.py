@@ -81,32 +81,24 @@ class LLMAPIAdapter:
             # Use ErrorClassifier for structured error classification
             error_class = ErrorClassifier.classify_exception(e)
             error_str = str(e)
-            
-            # Determine if we should retry/reduce based on error classification
+
+            # Handle 413 errors with proper payload reduction
             is_413 = error_class in (
                 ErrorClassifier.PROMPT_TOO_LARGE,
                 ErrorClassifier.TPM_LIMIT_EXCEEDED,
-                ErrorClassifier.DAILY_QUOTA_EXHAUSTED,
                 ErrorClassifier.REQUEST_TOO_LARGE,
             )
-            
-            # Set error_type based on classification
-            error_type = error_class
-            
-            if is_413 and not self._reduced_request_used:
+            # daily_quota_exhausted is NOT retried - it's a permanent quota issue
+            is_daily_quota = error_class == ErrorClassifier.DAILY_QUOTA_EXHAUSTED
+
+            if not is_daily_quota and is_413 and not self._reduced_request_used:
                 reduced_payload = reduce_payload_tokens(payload, self.max_tokens)
                 reduced_tokens = estimate_payload_tokens(reduced_payload)
                 original_tokens = estimate_payload_tokens(payload)
-                
-                # Check if original payload fits in budget (not oversized)
-                fits_in_budget = original_tokens <= self.max_tokens
-                
-                # Retry if:
-                # 1. Reduction actually reduces tokens, OR
-                # 2. Original payload fits in budget (transient 413 like TPM limit)
-                # Don't retry if payload is oversized AND reduction doesn't help
-                should_retry = (reduced_tokens < original_tokens) or fits_in_budget
-                
+
+                # Retry if reduction actually reduces tokens (never retry identical oversized request)
+                should_retry = reduced_tokens < original_tokens
+
                 if should_retry:
                     self._reduced_request_used = True
                     try:
@@ -142,7 +134,7 @@ class LLMAPIAdapter:
                             "request_id": None,
                             "attempt": 2,
                         }
-            
+
             return {
                 "status": "error",
                 "provider": self.provider,

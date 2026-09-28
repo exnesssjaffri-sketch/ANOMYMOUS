@@ -53,7 +53,6 @@ class ErrorClassifier:
     REDUCIBLE = {
         "prompt_too_large",
         "request_too_large",
-        "tpm_limit_exceeded",
     }
 
     @classmethod

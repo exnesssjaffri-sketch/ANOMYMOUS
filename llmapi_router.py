@@ -140,16 +140,50 @@ class LLMAPIRouter:
             eligible = [r for r in self.routes if r.is_healthy()]
         if not eligible:
             return []
-        candidates = eligible[:self.max_candidates]
+        
+        # Sort by health score: prefer routes with recent success, fewer consecutive failures
+        def health_score(route):
+            # Healthy routes get high score
+            if not route.is_healthy():
+                return -1000
+            
+            # Factor in recent success (more recent = higher score)
+            success_score = 0
+            if route.last_success > 0:
+                # Success in last 60 seconds gets bonus
+                if time.time() - route.last_success < 60:
+                    success_score = 100
+                elif time.time() - route.last_success < 300:  # 5 minutes
+                    success_score = 50
+            
+            # Factor in consecutive failures (fewer = better)
+            failure_penalty = route.consecutive_failures * 10
+            
+            # Factor in route weight
+            weight_score = route.weight * 10
+            
+            return success_score + weight_score - failure_penalty
+        
+        # Sort by health score (descending) then take top candidates
+        sorted_routes = sorted(eligible, key=health_score, reverse=True)
+        candidates = sorted_routes[:self.max_candidates]
+        
         if len(candidates) <= 1:
             return candidates
-        weights = [r.weight for r in candidates]
+        
+        # Add some randomization to avoid always picking the same top route
+        # but still prefer healthier routes
+        weights = [max(0.1, health_score(r)) for r in candidates]  # Ensure positive weights
         total = sum(weights)
-        weights = [w / total for w in weights]
+        if total > 0:
+            weights = [w / total for w in weights]
+        else:
+            weights = [1.0 / len(candidates)] * len(candidates)
+        
         selected = []
         remaining = candidates.copy()
         remaining_weights = weights.copy()
-        for _ in range(min(3, len(candidates))):
+        for _ in range(min(3, len(candidates))):  # Select up to 3 routes
             if not remaining:
                 break
             idx = self._rng.choices(range(len(remaining)), weights=remaining_weights, k=1)[0]
@@ -229,6 +263,21 @@ class LLMAPIRouter:
                     "model": route.model,
                     "output": None,
                     "error": f"Authentication failed for {route.provider}/{route.model}: {result.get('error')}",
+                    "error_type": error_type,
+                    "timed_out": False,
+                    "duration": result.get("duration", 0),
+                    "request_id": None,
+                    "attempt": attempts,
+                }
+
+            # ALL_MODELS_RATE_LIMITED means all candidates genuinely failed - stop immediately
+            if error_type == ErrorClassifier.ALL_MODELS_RATE_LIMITED:
+                return {
+                    "status": "error",
+                    "provider": route.provider,
+                    "model": route.model,
+                    "output": None,
+                    "error": f"All models rate limited on {route.provider}/{route.model}: {result.get('error')}",
                     "error_type": error_type,
                     "timed_out": False,
                     "duration": result.get("duration", 0),

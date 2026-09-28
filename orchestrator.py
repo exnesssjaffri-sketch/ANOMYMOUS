@@ -3,6 +3,7 @@ import json
 from typing import Dict, Any, Optional, List, Type, Union
 from transport import Transport, MockTransport, RealHTTPTransport
 from llmapi_adapter import LLMAPIAdapter
+from llmapi_router import LLMAPIRouter
 from task_classifier import TaskClassifier
 from process_executor import execute_process
 from workspace_manager import WorkspaceManager
@@ -10,17 +11,17 @@ from action_executor import ActionExecutor
 from verification import TaskVerifier
 
 class Orchestrator:
-    def __init__(self, provider: str, model: str, transport: Transport = None, endpoint: str = None, api_key: str = None, workspace_dir: Optional[str] = None, max_tokens: int = 7000):
-        # Use RealHTTPTransport if endpoint and api_key are provided, else use MockTransport
-        if transport is None:
-            if endpoint and api_key:
-                from transport import RealHTTPTransport
-                transport = RealHTTPTransport(endpoint, api_key)
-            else:
-                from transport import MockTransport
-                transport = MockTransport()
-        
-        self.llmapi_adapter = LLMAPIAdapter(provider, model, transport, max_tokens=max_tokens)
+    def __init__(self, provider: str, model: str, transport: Transport = None, endpoint: str = None, api_key: str = None, workspace_dir: Optional[str] = None, max_tokens: int = 7000, router: LLMAPIRouter = None):
+        self.router = router
+        if router:
+            self.llmapi_adapter = None
+        else:
+            if transport is None:
+                if endpoint and api_key:
+                    transport = RealHTTPTransport(endpoint, api_key)
+                else:
+                    transport = MockTransport()
+            self.llmapi_adapter = LLMAPIAdapter(provider, model, transport, max_tokens=max_tokens)
         self.task_classifier = TaskClassifier()
         
         # Set up safe workspace
@@ -39,7 +40,10 @@ class Orchestrator:
         
         for attempt in range(1, max_attempts + 1):
             # Get LLM response
-            llm_result = self.llmapi_adapter.send_request(task_text)
+            if self.router:
+                llm_result = self.router.send_request(task_text)
+            else:
+                llm_result = self.llmapi_adapter.send_request(task_text)
             print(f"LLM Result: {llm_result}")
             
             if llm_result["status"] != "success":
@@ -147,12 +151,18 @@ Please correct your actions to resolve this failure. Ensure that you return the 
         }
 
     def _create_final_result(self, status: str, execution: Dict[str, Any], verification: Optional[Dict[str, Any]], diagnostics: List[str]) -> Dict[str, Any]:
+        if self.router:
+            provider = execution.get("provider")
+            model = execution.get("model")
+        else:
+            provider = self.llmapi_adapter.provider
+            model = self.llmapi_adapter.model
         result = {
             "status": status,
             "execution": execution,
             "verification": verification,
-            "provider": self.llmapi_adapter.provider,
-            "model": self.llmapi_adapter.model,
+            "provider": provider,
+            "model": model,
             "output": execution.get("output"),
             "diagnostics": diagnostics
         }

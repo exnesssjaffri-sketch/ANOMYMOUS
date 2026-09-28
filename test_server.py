@@ -7,7 +7,6 @@ import urllib.parse
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from server import ActualServerHandler
 
 # Start the server in a separate thread
 class TestServerHandler(BaseHTTPRequestHandler):
