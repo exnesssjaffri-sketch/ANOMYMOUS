@@ -179,8 +179,9 @@ def test_all_models_rate_limited():
     route2 = ProviderRoute("cerebras", "llama-3.1-8b", transport2, weight=1.0)
     router = LLMAPIRouter([route1, route2])
     result = router.send_request("Short task")
-    assert result["status"] == "success"
-    assert result["router_attempt"] == 2
+    # ALL_MODELS_RATE_LIMITED means all candidates genuinely failed - stop immediately, no failover
+    assert result["status"] == "error"
+    assert result["error_type"] == "all_models_rate_limited"
     print("test_all_models_rate_limited passed")
 
 

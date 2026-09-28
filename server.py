@@ -30,8 +30,11 @@ from config import REAL_TRANSPORT_CONFIG
 # Global state (simple in-memory storage)
 latest_result = None
 
+# Check if mock mode is enabled
+use_mock = os.getenv("ANOMYMOUS_USE_MOCK", "0") == "1"
+
 # Initialize transport (MockTransport only for tests when explicitly enabled)
-if os.getenv("ANOMYMOUS_USE_MOCK", "0") == "1":
+if use_mock:
     transport = MockTransport({
         "Create a simple restaurant website:": {
             "output": json.dumps({
@@ -72,6 +75,7 @@ else:
         REAL_TRANSPORT_CONFIG["endpoint"],
         REAL_TRANSPORT_CONFIG["api_key"]
     )
+
 # Build multi-provider routes from the registry using LLMAPI router
 # This replaces hardcoded provider/model with dynamic selection
 # The router provides dynamic provider/model selection and failover
@@ -84,8 +88,14 @@ for prov_name in list_providers():
     if not cfg:
         continue
     try:
-        prov_transport = reg_create_transport(prov_name)
+        if use_mock:
+            prov_transport = MockTransport({})
+        else:
+            prov_transport = reg_create_transport(prov_name)
     except Exception:
+        continue
+    # Skip providers that couldn't create a transport (e.g., missing API key)
+    if prov_transport is None:
         continue
     models_to_use = cfg.default_models[:3] if cfg.default_models else cfg.all_models[:3]
     for model_info in models_to_use:
@@ -106,8 +116,8 @@ if all_routes:
     orchestrator = Orchestrator(provider="auto", model="auto", transport=None, router=router)
     print("[INFO] Initialized orchestrator with LLMAPI router supporting multiple providers/models")
 else:
-    orchestrator = Orchestrator(provider="groq", model="llama-3.1-8b-instant", transport=transport)
-    print("[WARN] No provider routes available, using fallback configuration")
+    orchestrator = Orchestrator(provider="none", model="none", transport=MockTransport({}))
+    print("[WARN] No provider routes available - system will report NO_ELIGIBLE_ROUTE")
 
 
 class SimpleHandler(BaseHTTPRequestHandler):
@@ -131,7 +141,10 @@ class SimpleHandler(BaseHTTPRequestHandler):
         elif parsed.path == "/providers":
             self._set_json(200)
             provider_list = []
-            for p, info in providers.list_providers().items():
+            for p in providers.list_providers():
+                info = providers.get_provider_info(p)
+                if not info:
+                    continue
                 provider_list.append({
                     "name": p,
                     "display_name": info["name"],

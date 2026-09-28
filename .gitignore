@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Workspace (generated output)
+workspace/
+
+# Logs
+*.log
+server_out.txt
+server_err.txt
+
+# Environment files with secrets
+.env
+.env.local
+*.env
+
+# Health state persistence
+health_state.json
+
+# OS
+Thumbs.db
+ehthumbs.db
+desktop.ini

@@ -35,7 +35,7 @@ def verify_website(workspace_path: str) -> Dict[str, Any]:
         }
     
     try:
-        with open(os.path.join(workspace_path, "index.html"), "r", encoding="utf-8") as f:
+        with open(index_path, "r", encoding="utf-8") as f:
             html_content = f.read().lower()
             print(f"HTML content preview: {html_content[:100]}")
             

@@ -99,7 +99,7 @@ class Orchestrator:
             print(f"Verification result before return: {verification_result}")
             
             if verification_result["status"] == "success":
-                print("Verification result is successful\nVerification: {verification_result}\n")
+                print(f"Verification result is successful\nVerification: {verification_result}\n")
                 return self._create_final_result(
                     "success",
                     execution=llm_result,
@@ -108,7 +108,7 @@ class Orchestrator:
                 )
             
             # Handle verification failure
-            print("Verification result is failed\nVerification: {verification_result}\n")
+            print(f"Verification result is failed\nVerification: {verification_result}\n")
             if attempt == max_attempts:
                 return self._create_final_result(
                     "failed",
@@ -128,27 +128,19 @@ Details: {details}
 
 Please correct your actions to resolve this failure. Ensure that you return the corrected actions inside a valid JSON object following the required schema."""
 
-    def _verify_result(self, local_work_result: Dict[str, Any]) -> Dict[str, Any]:
+    def _verify_result(self, local_work_result: Dict[str, Any], task_classification: Dict[str, Any], task_text: str) -> Dict[str, Any]:
         """
-        Verify the result of local work.
+        Verify the result of local work using the task verifier.
         """
-        # This is a simplified verification - real implementation would check
-        # for required files, build success, test results, etc.
+        if local_work_result["status"] != "success":
+            return {
+                "status": "failed",
+                "verified": False,
+                "diagnostics": [f"Local work failed: {local_work_result.get('error', 'unknown')}"]
+            }
         
-        if local_work_result["status"] == "success":
-            # Check if the file exists and has content
-            if os.path.exists("task_output.txt") and os.path.getsize("task_output.txt") > 0:
-                return {
-                    "status": "success",
-                    "verified": True,
-                    "diagnostics": ["File exists and is not empty"]
-                }
-            
-        return {
-            "status": "failed",
-            "verified": False,
-            "diagnostics": ["Verification failed"]
-        }
+        # Use the actual task verifier
+        return self.verifier.verify(task_classification, task_text)
 
     def _create_final_result(self, status: str, execution: Dict[str, Any], verification: Optional[Dict[str, Any]], diagnostics: List[str]) -> Dict[str, Any]:
         if self.router:

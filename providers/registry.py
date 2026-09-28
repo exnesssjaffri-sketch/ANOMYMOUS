@@ -56,13 +56,12 @@ def create_transport(provider_name, api_key=None, endpoint=None):
     # Determine transport type based on auth requirements
     if config.requires_auth and not key:
         if config.anonymous_access:
-            # Use anonymous access mode
+            # Use anonymous access mode (limited)
             return create_anonymous_transport(provider_name, config)
         else:
-            raise ValueError(
-                f"Provider '{provider_name}' requires authentication. "
-                f"Set '{config.auth_env_var}' environment variable."
-            )
+            # Provider requires auth but no key available - return None
+            # so the caller can skip this provider
+            return None
 
     # Create standard transport
     try:
