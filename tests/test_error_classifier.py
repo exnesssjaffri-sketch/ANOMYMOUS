@@ -95,7 +95,8 @@ def test_should_failover():
     assert ErrorClassifier.should_failover(ErrorClassifier.UNAVAILABLE) == True
     assert ErrorClassifier.should_failover(ErrorClassifier.NETWORK_ERROR) == True
     assert ErrorClassifier.should_failover(ErrorClassifier.TIMEOUT) == True
-    assert ErrorClassifier.should_failover(ErrorClassifier.ALL_MODELS_RATE_LIMITED) == True
+    # ALL_MODELS_RATE_LIMITED should NOT trigger failover - it means all models failed
+    assert ErrorClassifier.should_failover(ErrorClassifier.ALL_MODELS_RATE_LIMITED) == False
     assert ErrorClassifier.should_failover(ErrorClassifier.AUTH_ERROR) == False
     print("test_should_failover passed")
 

@@ -28,7 +28,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from transport import RealHTTPTransport, MockTransport
 from orchestrator import Orchestrator
 from llmapi_router import LLMAPIRouter, ProviderRoute
-from providers.registry import list_providers, create_transport as reg_create_transport, get_config
+from providers.registry import list_providers, create_transport as reg_create_transport, get_config, create_routes
 from providers.analytics import analytics
 from config import REAL_TRANSPORT_CONFIG
 import providers
@@ -64,25 +64,17 @@ def _initialize_routes():
         cfg = get_config(prov_name)
         if not cfg:
             continue
-        # Production MUST NOT silently fall back to MockTransport
+        # Use create_routes from registry which properly handles
+        # model-specific transports (e.g., HuggingFace router)
         if use_mock:
-            prov_transport = MockTransport({})
+            # In mock mode, create a mock transport and use it for all routes
+            from transport import MockTransport
+            mock_transport = MockTransport({})
+            routes = create_routes(prov_name, transport=mock_transport, max_candidates=3)
         else:
-            prov_transport = reg_create_transport(prov_name)
-        # Production MUST explicitly fail if a transport can't be created
-        if prov_transport is None:
-            raise ValueError(f"Failed to create transport for provider '{prov_name}'")
-        models_to_use = cfg.default_models[:3] if cfg.default_models else cfg.all_models[:3]
-        for model_info in models_to_use:
-            route = ProviderRoute(
-                provider=prov_name,
-                model=model_info.id,
-                transport=prov_transport,
-                max_tokens=model_info.context_window,
-                priority=1,
-                weight=1.0,
-            )
-            all_routes.append(route)
+            # Production mode - create routes with real transports
+            routes = create_routes(prov_name, transport=None, max_candidates=3)
+        all_routes.extend(routes)
     
     # Production MUST NOT silently fall back to MockTransport - fail explicitly
     if all_routes:

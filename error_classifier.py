@@ -157,5 +157,4 @@ class ErrorClassifier:
             cls.UNAVAILABLE,
             cls.NETWORK_ERROR,
             cls.TIMEOUT,
-            cls.ALL_MODELS_RATE_LIMITED,
         )

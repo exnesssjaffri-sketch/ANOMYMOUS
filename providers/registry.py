@@ -139,11 +139,12 @@ def create_routes(provider_name, transport=None, max_candidates=3):
 
 
 def create_huggingface_transport_for_model(config, model_id):
-    """Create a transport for a specific HuggingFace model."""
+    """Create a transport for a specific HuggingFace model using the router API."""
     from transport import RealHTTPTransport
     
-    # Construct endpoint with model ID
-    endpoint = f"{config.endpoint.rstrip('/')}/models/{model_id}"
+    # For HuggingFace Router, the model ID should be passed in the URL path
+    # The endpoint is the OpenAI-compatible chat completions endpoint
+    endpoint = f"{config.endpoint}?model={model_id}"
     
     # Use provided key or read from env var
     api_key_env_var = config.auth_env_var
@@ -156,50 +157,19 @@ def create_huggingface_transport_for_model(config, model_id):
     # Create the transport
     transport = RealHTTPTransport(endpoint, api_key)
     
-    # Monkey-patch the transport to convert payloads to HuggingFace format
+    # Monkey-patch the transport to convert payloads to HuggingFace router format
     original_send_request = transport.send_request
     
     def send_request_with_conversion(payload, timeout):
-        # Convert OpenAI format to Hugging Face format
+        # Convert OpenAI format to HuggingFace router format
         messages = payload.get("messages", [])
         if not messages:
             return original_send_request(payload, timeout)
         
-        # For chat models, concatenate messages into a single prompt
-        prompt_parts = []
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            if role == "system":
-                prompt_parts.append(f"System: {content}")
-            elif role == "user":
-                prompt_parts.append(f"User: {content}")
-            elif role == "assistant":
-                prompt_parts.append(f"Assistant: {content}")
-        
-        # Join with newlines
-        full_prompt = "\n\n".join(prompt_parts)
-        
-        hf_payload = {
-            "inputs": full_prompt,
-            "parameters": {
-                "temperature": payload.get("temperature", 0),
-                "max_new_tokens": payload.get("max_tokens", 512),
-                "return_full_text": False,
-            },
-            "options": {
-                "wait_for_model": True,
-                "use_cache": False,
-            }
-        }
-        
-        # Handle response_format for JSON mode
-        if payload.get("response_format", {}).get("type") == "json_object":
-            hf_payload["parameters"]["return_full_text"] = False
-            # Add instruction to return JSON
-            hf_payload["inputs"] = full_prompt + "\n\nReturn valid JSON only."
-        
-        return original_send_request(hf_payload, timeout)
+        # For chat models, use the messages directly as they already match OpenAI format
+        # The router expects OpenAI-compatible chat completions format
+        # So we can pass the payload directly through
+        return original_send_request(payload, timeout)
     
     transport.send_request = send_request_with_conversion
     return transport

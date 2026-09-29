@@ -20,7 +20,11 @@ class Orchestrator:
                 if endpoint and api_key:
                     transport = RealHTTPTransport(endpoint, api_key)
                 else:
-                    transport = MockTransport()
+                    # Production MUST NOT silently fall back to MockTransport
+                    raise ValueError(
+                        "No transport provided and no endpoint/api_key for RealHTTPTransport. "
+                        "Transport is required for production use."
+                    )
             self.llmapi_adapter = LLMAPIAdapter(provider, model, transport, max_tokens=max_tokens)
         self.task_classifier = TaskClassifier()
         
