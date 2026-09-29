@@ -57,19 +57,30 @@ def create_transport(provider_name, api_key=None, endpoint=None):
     if config.requires_auth and not key:
         if config.anonymous_access:
             # Use anonymous access mode (limited)
-            return create_anonymous_transport(provider_name, config)
+            # Production MUST NOT silently fall back to MockTransport
+            raise ValueError(
+                f"Provider '{provider_name}' requires authentication but no API key is available. "
+                f"Please set {config.auth_env_var} environment variable or configure authentication."
+            )
         else:
-            # Provider requires auth but no key available - return None
-            # so the caller can skip this provider
-            return None
+            # Provider requires auth but no key available - fail explicitly
+            raise ValueError(
+                f"Provider '{provider_name}' requires authentication but no API key is available. "
+                f"Please set {config.auth_env_var} environment variable."
+            )
 
     # Create standard transport
-    try:
+    # Production MUST NOT silently fall back to MockTransport or real transports
+    if provider_name in ["kilo", "llm7"] and not key:
+        # Providers that support anonymous access must still get a real transport
+        # (not MockTransport) for production
+        raise ValueError(
+            f"Provider '{provider_name}' requires an API key for production use. "
+            f"Please set {config.auth_env_var} environment variable."
+        )
+    else:
         from transport import RealHTTPTransport
         return RealHTTPTransport(url, key or "")
-    except ImportError:
-        from transport import MockTransport
-        return MockTransport()
 
 
 def create_anonymous_transport(provider_name, config):
@@ -98,10 +109,6 @@ def create_routes(provider_name, transport=None, max_candidates=3):
     if not config:
         raise ValueError(f"Provider '{provider_name}' is not registered")
 
-    # Use provided transport or create one
-    if transport is None:
-        transport = create_transport(provider_name)
-
     # Create routes for default models
     routes = []
     models_to_use = config.default_models[:max_candidates]
@@ -110,10 +117,18 @@ def create_routes(provider_name, transport=None, max_candidates=3):
     models = models_to_use if models_to_use else config.all_models[:max_candidates]
 
     for model_info in models:
+        # For HuggingFace, create a transport specific to this model
+        if provider_name == "huggingface":
+            route_transport = create_huggingface_transport_for_model(config, model_info.id)
+        elif transport is None:
+            route_transport = create_transport(provider_name)
+        else:
+            route_transport = transport
+        
         route = ProviderRoute(
             provider=provider_name,
             model=model_info.id,
-            transport=transport,
+            transport=route_transport,
             max_tokens=model_info.context_window,
             priority=model_info.tier_weight if hasattr(model_info, 'tier_weight') else 1,
             weight=model_info.weight if hasattr(model_info, 'weight') else 1.0,
@@ -121,6 +136,73 @@ def create_routes(provider_name, transport=None, max_candidates=3):
         routes.append(route)
 
     return routes
+
+
+def create_huggingface_transport_for_model(config, model_id):
+    """Create a transport for a specific HuggingFace model."""
+    from transport import RealHTTPTransport
+    
+    # Construct endpoint with model ID
+    endpoint = f"{config.endpoint.rstrip('/')}/models/{model_id}"
+    
+    # Use provided key or read from env var
+    api_key_env_var = config.auth_env_var
+    api_key = os.getenv(api_key_env_var)
+    
+    if not api_key:
+        raise ValueError(f"No API key available for HuggingFace model '{model_id}'. "
+                        f"Please set {api_key_env_var} environment variable.")
+    
+    # Create the transport
+    transport = RealHTTPTransport(endpoint, api_key)
+    
+    # Monkey-patch the transport to convert payloads to HuggingFace format
+    original_send_request = transport.send_request
+    
+    def send_request_with_conversion(payload, timeout):
+        # Convert OpenAI format to Hugging Face format
+        messages = payload.get("messages", [])
+        if not messages:
+            return original_send_request(payload, timeout)
+        
+        # For chat models, concatenate messages into a single prompt
+        prompt_parts = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system":
+                prompt_parts.append(f"System: {content}")
+            elif role == "user":
+                prompt_parts.append(f"User: {content}")
+            elif role == "assistant":
+                prompt_parts.append(f"Assistant: {content}")
+        
+        # Join with newlines
+        full_prompt = "\n\n".join(prompt_parts)
+        
+        hf_payload = {
+            "inputs": full_prompt,
+            "parameters": {
+                "temperature": payload.get("temperature", 0),
+                "max_new_tokens": payload.get("max_tokens", 512),
+                "return_full_text": False,
+            },
+            "options": {
+                "wait_for_model": True,
+                "use_cache": False,
+            }
+        }
+        
+        # Handle response_format for JSON mode
+        if payload.get("response_format", {}).get("type") == "json_object":
+            hf_payload["parameters"]["return_full_text"] = False
+            # Add instruction to return JSON
+            hf_payload["inputs"] = full_prompt + "\n\nReturn valid JSON only."
+        
+        return original_send_request(hf_payload, timeout)
+    
+    transport.send_request = send_request_with_conversion
+    return transport
 
 
 def get_provider_info(provider_name):

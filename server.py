@@ -87,16 +87,14 @@ for prov_name in list_providers():
     cfg = get_config(prov_name)
     if not cfg:
         continue
-    try:
-        if use_mock:
-            prov_transport = MockTransport({})
-        else:
-            prov_transport = reg_create_transport(prov_name)
-    except Exception:
-        continue
-    # Skip providers that couldn't create a transport (e.g., missing API key)
+    # Production MUST NOT silently fall back to MockTransport
+    if use_mock:
+        prov_transport = MockTransport({})
+    else:
+        prov_transport = reg_create_transport(prov_name)
+    # Production MUST explicitly fail if a transport can't be created
     if prov_transport is None:
-        continue
+        raise ValueError(f"Failed to create transport for provider '{prov_name}'")
     models_to_use = cfg.default_models[:3] if cfg.default_models else cfg.all_models[:3]
     for model_info in models_to_use:
         route = ProviderRoute(
@@ -110,14 +108,16 @@ for prov_name in list_providers():
         all_routes.append(route)
 
 # Use router for dynamic provider/model selection
-# If no routes found (e.g., no API keys), fall back to simple transport
+# Production MUST NOT silently fall back to MockTransport - fail explicitly
 if all_routes:
     router = LLMAPIRouter(all_routes, max_candidates=5)
     orchestrator = Orchestrator(provider="auto", model="auto", transport=None, router=router)
     print("[INFO] Initialized orchestrator with LLMAPI router supporting multiple providers/models")
 else:
-    orchestrator = Orchestrator(provider="none", model="none", transport=MockTransport({}))
-    print("[WARN] No provider routes available - system will report NO_ELIGIBLE_ROUTE")
+    raise RuntimeError(
+        "No provider routes available. Ensure at least one provider has valid API keys configured. "
+        "Set ANOMYMOUS_USE_MOCK=1 only for testing."
+    )
 
 
 class SimpleHandler(BaseHTTPRequestHandler):

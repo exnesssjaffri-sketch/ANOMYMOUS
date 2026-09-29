@@ -64,15 +64,14 @@ def _initialize_routes():
         cfg = get_config(prov_name)
         if not cfg:
             continue
-        try:
-            if use_mock:
-                prov_transport = MockTransport({})
-            else:
-                prov_transport = reg_create_transport(prov_name)
-        except Exception:
-            continue
+        # Production MUST NOT silently fall back to MockTransport
+        if use_mock:
+            prov_transport = MockTransport({})
+        else:
+            prov_transport = reg_create_transport(prov_name)
+        # Production MUST explicitly fail if a transport can't be created
         if prov_transport is None:
-            continue
+            raise ValueError(f"Failed to create transport for provider '{prov_name}'")
         models_to_use = cfg.default_models[:3] if cfg.default_models else cfg.all_models[:3]
         for model_info in models_to_use:
             route = ProviderRoute(
@@ -85,14 +84,16 @@ def _initialize_routes():
             )
             all_routes.append(route)
     
+    # Production MUST NOT silently fall back to MockTransport - fail explicitly
     if all_routes:
         _router = LLMAPIRouter(all_routes, max_candidates=5)
         _orchestrator = Orchestrator(provider="auto", model="auto", transport=None, router=_router)
         print("[INFO] Initialized orchestrator with LLMAPI router supporting multiple providers/models")
     else:
-        # No eligible routes - orchestrator will report NO_ELIGIBLE_ROUTE
-        _orchestrator = Orchestrator(provider="none", model="none", transport=MockTransport({}))
-        print("[WARN] No provider routes available - system will report NO_ELIGIBLE_ROUTE")
+        raise RuntimeError(
+            "No provider routes available. Ensure at least one provider has valid API keys configured. "
+            "Set ANOMYMOUS_USE_MOCK=1 only for testing."
+        )
     
     _routes_initialized = True
 
