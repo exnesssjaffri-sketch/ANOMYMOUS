@@ -159,9 +159,24 @@ class SimpleHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         if parsed.path == "/task":
-            length = int(self.headers.get('Content-Length', 0))
+            # Safely parse Content-Length; default to 0 if missing/invalid
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+            except (ValueError, TypeError):
+                self._set_json(400)
+                self.wfile.write(json.dumps({"error": "Invalid Content-Length"}).encode())
+                return
+            if length < 0:
+                self._set_json(400)
+                self.wfile.write(json.dumps({"error": "Invalid Content-Length"}).encode())
+                return
             body = self.rfile.read(length)
-            data = json.loads(body)
+            try:
+                data = json.loads(body)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                self._set_json(400)
+                self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode())
+                return
             task_text = data.get('task')
             if not task_text:
                 self._set_json(400)
