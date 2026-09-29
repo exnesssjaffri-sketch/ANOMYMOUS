@@ -2,40 +2,75 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ANOMYMOUS Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #status { margin-top: 10px; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>ANOMYMOUS</h1>
-    <textarea id="taskInput" rows="4" cols="50" placeholder="Enter task description"></textarea><br>
-    <button id="runBtn">RUN</button>
-    <pre id="status"></pre>
-    <script>
-        const statusEl = document.getElementById('status');
-        const runBtn = document.getElementById('runBtn');
-        const taskInput = document.getElementById('taskInput');
-        runBtn.addEventListener('click', async () => {
-            const task = taskInput.value.trim();
-            if (!task) { alert('Task cannot be empty'); return; }
-            statusEl.textContent = 'Submitting task...';
-            const resp = await fetch('/task', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task }) });
-            if (!resp.ok) { statusEl.textContent = 'Error submitting task'; return; }
-            statusEl.textContent = 'Task submitted. Waiting for result...';
-            // Poll for result
-            const poll = async () => {
-                const res = await fetch('/status');
-                const data = await res.json();
-                if (data && data.status) {
-                    statusEl.textContent = JSON.stringify(data, null, 2);
-                } else {
-                    setTimeout(poll, 1000);
-                }
-            };
-            poll();
-        });
-    </script>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <h1>ANOMYMOUS</h1>
+                <div class="health-indicator" id="healthIndicator">
+                    <span class="health-dot"></span>
+                    <span class="health-text">Checking...</span>
+                </div>
+            </div>
+            <p class="subtitle">Decentralized AI Task Execution Platform</p>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Column: Task Execution -->
+            <div class="panel">
+                <h2>Task Execution</h2>
+
+                <!-- Capabilities -->
+                <div class="capabilities" id="capabilitiesPanel">
+                    <h3>Capabilities</h3>
+                    <div class="cap-grid" id="capabilitiesGrid">
+                        <div class="cap-loading">Loading capabilities...</div>
+                    </div>
+                </div>
+
+                <!-- Task Input -->
+                <div class="task-section">
+                    <label for="taskInput">Task Description</label>
+                    <textarea id="taskInput" rows="4" placeholder="e.g., Create a simple restaurant website"></textarea>
+                    <button id="runBtn" class="btn-primary">RUN</button>
+                </div>
+
+                <!-- Status Display -->
+                <div class="status-section">
+                    <h3>Execution Status</h3>
+                    <pre id="statusOutput" class="status-output">No task executed yet.</pre>
+                </div>
+            </div>
+
+            <!-- Right Column: Provider Info -->
+            <div class="panel">
+                <h2>LLM Providers</h2>
+                <div class="providers-list" id="providersList">
+                    <div class="loading">Loading providers...</div>
+                </div>
+
+                <!-- Analytics -->
+                <div class="analytics" id="analyticsPanel">
+                    <h3>Analytics</h3>
+                    <div class="analytics-grid" id="analyticsGrid">
+                        <div class="analytics-loading">Loading analytics...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>ANOMYMOUS &mdash; Powered by multi-provider LLM routing</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
 </body>
 </html>
