@@ -2,6 +2,7 @@
 """Tests for llmapi_router.py"""
 import sys
 import os
+import random
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from llmapi_router import LLMAPIRouter, ProviderRoute, RouteStatus
@@ -85,6 +86,8 @@ def test_router_failover():
     route1 = ProviderRoute("groq", "llama-3.1-70b", transport1, priority=10, weight=10.0)
     route2 = ProviderRoute("groq", "llama-3.1-8b", transport2, priority=5, weight=1.0)
     router = LLMAPIRouter([route1, route2])
+    # Seed the router's RNG to ensure deterministic route selection
+    router._rng.seed(0)
     result = router.send_request("Short task")
     assert result["status"] == "success"
     assert result["provider"] == "groq"
@@ -102,6 +105,8 @@ def test_router_all_routes_failed():
     route1 = ProviderRoute("groq", "llama-3.1-70b", transport1)
     route2 = ProviderRoute("cerebras", "llama-3.1-8b", transport2)
     router = LLMAPIRouter([route1, route2])
+    # Seed the router's RNG to ensure deterministic route selection
+    router._rng.seed(0)
     result = router.send_request("Short task")
     assert result["status"] == "error"
     assert result["error_type"] == "all_routes_failed"
@@ -161,7 +166,9 @@ def test_daily_quota_exhausted():
     route1 = ProviderRoute("groq", "llama-3.1-70b", transport1, weight=10.0)
     route2 = ProviderRoute("groq", "llama-3.1-8b", transport2, weight=1.0)
     router = LLMAPIRouter([route1, route2])
-    
+    # Seed the router's RNG to ensure deterministic route selection
+    router._rng.seed(0)
+
     result = router.send_request("Short task")
     assert result["status"] == "success"
     assert result["router_attempt"] == 2
