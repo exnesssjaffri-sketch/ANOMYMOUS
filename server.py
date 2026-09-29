@@ -10,6 +10,7 @@ Endpoints:
     GET /status            - returns the latest task result (in-memory)
     GET /providers         - returns list of registered providers
     GET /analytics         - returns analytics summary
+    GET /capabilities      - returns available capabilities
     GET /static/<file>     - serves static files (HTML/JS/CSS) for the UI
 """
 
@@ -23,9 +24,10 @@ from urllib.parse import parse_qs, urlparse
 from threading import Thread
 from transport import MockTransport, RealHTTPTransport
 from orchestrator import Orchestrator
-import providers
+from llmapi_router import LLMAPIRouter
 from providers.analytics import analytics
-from providers.registry import create_routes
+from providers.registry import create_routes, list_providers, get_config
+import providers
 from config import REAL_TRANSPORT_CONFIG
 
 # Global state (simple in-memory storage)
@@ -33,49 +35,6 @@ latest_result = None
 
 # Check if mock mode is enabled
 use_mock = os.getenv("ANOMYMOUS_USE_MOCK", "0") == "1"
-
-# Initialize transport (MockTransport only for tests when explicitly enabled)
-if use_mock:
-    transport = MockTransport({
-        "Create a simple restaurant website:": {
-            "output": json.dumps({
-                "choices": [
-                    {
-                        "message": {
-                            "content": json.dumps({
-                                "thought": "Creating a restaurant website.",
-                                "actions": [
-                                    {
-                                        "type": "create_file",
-                                        "path": "restaurant/index.html",
-                                        "content": "<html><head><title>Restaurant</title></head><body><h1>Welcome</h1></body></html>",
-                                        "critical": True
-                                    },
-                                    {
-                                        "type": "create_file",
-                                        "path": "restaurant/style.css",
-                                        "content": "body { color: red; font-family: Arial; }",
-                                        "critical": True
-                                    },
-                                    {
-                                        "type": "create_file",
-                                        "path": "restaurant/script.js",
-                                        "content": "console.log('Restaurant site loaded!');",
-                                        "critical": True
-                                    }
-                                ]
-                            })
-                        }
-                    }
-                ]
-            })
-        }
-    })
-else:
-    transport = RealHTTPTransport(
-        REAL_TRANSPORT_CONFIG["endpoint"],
-        REAL_TRANSPORT_CONFIG["api_key"]
-    )
 
 # Module-level variables for lazy initialization
 _router = None
@@ -94,31 +53,27 @@ def _initialize_routes():
         cfg = get_config(prov_name)
         if not cfg:
             continue
-        # Use create_routes from registry which properly handles
-        # model-specific transports (e.g., HuggingFace router)
         if use_mock:
             # In mock mode, create a mock transport and use it for all routes
-            from transport import MockTransport
             mock_transport = MockTransport({})
             routes = create_routes(prov_name, transport=mock_transport, max_candidates=3)
         else:
             # Production mode - create routes with real transports
+            # create_routes handles missing API keys gracefully (skips providers)
             routes = create_routes(prov_name, transport=None, max_candidates=3)
         all_routes.extend(routes)
     
-    # Use router for dynamic provider/model selection
-    # Production MUST NOT silently fall back to MockTransport - fail explicitly
     if all_routes:
         _router = LLMAPIRouter(all_routes, max_candidates=5)
         _orchestrator = Orchestrator(provider="auto", model="auto", transport=None, router=_router)
         print("[INFO] Initialized orchestrator with LLMAPI router supporting multiple providers/models")
     else:
-        raise RuntimeError(
-            "No provider routes available. Ensure at least one provider has valid API keys configured. "
-            "Set ANOMYMOUS_USE_MOCK=1 only for testing."
-        )
+        # No routes available - orchestrator will be None, handled gracefully in handlers
+        _orchestrator = None
+        print("[WARN] No provider routes available. Set ANOMYMOUS_USE_MOCK=1 for testing or configure API keys.")
     
     _routes_initialized = True
+
 
 def _get_orchestrator():
     """Get the orchestrator, initializing routes if needed."""
@@ -213,11 +168,26 @@ class SimpleHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "Missing task"}).encode())
                 return
 
+            # Check if orchestrator is available
+            orchestrator = _get_orchestrator()
+            if orchestrator is None:
+                self._set_json(503)
+                self.wfile.write(json.dumps({
+                    "error": "No orchestrator available. Set ANOMYMOUS_USE_MOCK=1 for testing or configure API keys."
+                }).encode())
+                return
+
             # Run orchestrator in a background thread to avoid blocking the server
             def run_task():
                 global latest_result
-                orchestrator = _get_orchestrator()
-                latest_result = orchestrator.execute_task(task_text)
+                try:
+                    latest_result = orchestrator.execute_task(task_text)
+                except Exception as e:
+                    latest_result = {
+                        "status": "failed",
+                        "execution": str(e),
+                        "error": str(e)
+                    }
 
             Thread(target=run_task, daemon=True).start()
             self._set_json(202)

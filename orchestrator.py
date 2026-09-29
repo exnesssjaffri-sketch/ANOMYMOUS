@@ -120,6 +120,17 @@ class Orchestrator:
                     verification=verification_result,
                     diagnostics=[f"Verification failed after {max_attempts} attempts"]
                 )
+            
+            # Continue to next attempt
+            continue
+        
+        # If we exhaust all attempts without returning, return a failure
+        return self._create_final_result(
+            "failed",
+            execution=llm_result,
+            verification=None,
+            diagnostics=["All attempts failed"]
+        )
 
     def _build_repair_prompt(self, original_task: str, attempt: int, failure_type: str, details: str) -> str:
         """

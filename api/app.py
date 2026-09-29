@@ -82,17 +82,16 @@ def _initialize_routes():
         _orchestrator = Orchestrator(provider="auto", model="auto", transport=None, router=_router)
         print("[INFO] Initialized orchestrator with LLMAPI router supporting multiple providers/models")
     else:
-        raise RuntimeError(
-            "No provider routes available. Ensure at least one provider has valid API keys configured. "
-            "Set ANOMYMOUS_USE_MOCK=1 only for testing."
-        )
+        # Don't raise - let handlers deal with missing orchestrator gracefully
+        _orchestrator = None
+        print("[WARN] No provider routes available. Set ANOMYMOUS_USE_MOCK=1 for testing or configure API keys.")
     
     _routes_initialized = True
 
 
 def _get_orchestrator():
     """Get or create the orchestrator."""
-    if _orchestrator is None:
+    if not _routes_initialized:
         _initialize_routes()
     return _orchestrator
 
@@ -133,12 +132,23 @@ def submit_task():
     
     # Get orchestrator
     orchestrator = _get_orchestrator()
+    if orchestrator is None:
+        return jsonify({
+            "error": "No orchestrator available. Set ANOMYMOUS_USE_MOCK=1 for testing or configure API keys."
+        }), 503
     
     # In serverless, we execute synchronously (no background threads)
     # The orchestrator handles its own retry logic internally
-    latest_result = orchestrator.execute_task(task_text)
+    try:
+        latest_result = orchestrator.execute_task(task_text)
+    except Exception as e:
+        latest_result = {
+            "status": "failed",
+            "execution": str(e),
+            "error": str(e)
+        }
     
-    return jsonify({"status": "accepted"}), 202
+    return jsonify(latest_result), 202
 
 
 @app.route("/status", methods=["GET"])

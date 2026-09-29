@@ -99,7 +99,7 @@ def create_routes(provider_name, transport=None, max_candidates=3):
         max_candidates: Maximum number of routes to create
 
     Returns:
-        List of ProviderRoute instances
+        List of ProviderRoute instances (empty if provider unavailable)
     """
     from llmapi_router import ProviderRoute, LLMAPIRouter
     from llmapi_adapter import LLMAPIAdapter
@@ -119,9 +119,20 @@ def create_routes(provider_name, transport=None, max_candidates=3):
     for model_info in models:
         # For HuggingFace, create a transport specific to this model
         if provider_name == "huggingface":
-            route_transport = create_huggingface_transport_for_model(config, model_info.id)
+            try:
+                route_transport = create_huggingface_transport_for_model(config, model_info.id)
+            except ValueError as e:
+                # Skip this model if transport creation fails (e.g., no API key)
+                print(f"[WARN] Skipping HuggingFace model {model_info.id}: {e}")
+                continue
         elif transport is None:
-            route_transport = create_transport(provider_name)
+            try:
+                route_transport = create_transport(provider_name)
+            except ValueError as e:
+                # Skip this provider if transport creation fails (e.g., no API key)
+                # This supports partial configuration - other providers can still work
+                print(f"[WARN] Skipping provider {provider_name}: {e}")
+                break  # All models for this provider use the same transport, so skip all
         else:
             route_transport = transport
         
