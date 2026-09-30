@@ -190,33 +190,23 @@ class SimpleHandler(BaseHTTPRequestHandler):
             # Run orchestrator in a background thread to avoid blocking the server
             def run_task():
                 global latest_result
-                orchestrator = _get_orchestrator()
-                
-                # FIX #2: Check if orchestrator is None before calling execute_task
-                if orchestrator is None:
-                    latest_result = {
-                        "status": "failed",
-                        "error": "No orchestrator available. Set ANOMYMOUS_USE_MOCK=1 for testing or configure API keys.",
-                        "provider": None,
-                        "model": None,
-                        "execution": None,
-                        "verification": None,
-                        "diagnostics": ["No provider routes configured"]
-                    }
-                    return
-                
-                # FIX #3: Catch exceptions in background thread
+
                 try:
+                    orchestrator = _get_orchestrator()
+
+                    if orchestrator is None:
+                        latest_result = {
+                            "status": "failed",
+                            "error": "Orchestrator is unavailable"
+                        }
+                        return
+
                     latest_result = orchestrator.execute_task(task_text)
+
                 except Exception as e:
                     latest_result = {
                         "status": "failed",
-                        "error": str(e),
-                        "provider": None,
-                        "model": None,
-                        "execution": None,
-                        "verification": None,
-                        "diagnostics": [f"Unexpected error: {str(e)}"]
+                        "error": str(e)
                     }
 
             Thread(target=run_task, daemon=True).start()
