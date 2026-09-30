@@ -1,0 +1,644 @@
+   1: // ANOMYMOUS Dashboard Application
+   2: // Modern AI Task Execution Interface
+   3: // Browser-compatible HTML5/ES6 implementation
+   4: 
+   5: class AnomyMousDashboard {
+   6:     constructor() {
+   7:         this.state = {
+   8:             health: 'checking',
+   9:             providers: [],
+  10:             analytics: {},
+  11:             taskStatus: 'idle'
+  12:         };
+  13:         this.pollingInterval = null;
+  14:         this.pollingAttempts = 0;
+  15:         this.maxPollingAttempts = 30;
+  16:         this.pollingTimeout = 60000; 
+  17:         this.isSubmitting = false;
+  18:         this.capabilities = {};
+  19:         this.initialize();
+  20:     }
+  21: 
+  22:     async initialize() {
+  23:         this.setupEventListeners();
+  24:         await Promise.all([
+  25:             this.loadHealth(),
+  26:             this.loadProviders(),
+  27:             this.loadAnalytics(),
+  28:             this.loadCapabilities()
+  29:         ]);
+  30:         this.renderProviders();
+  31:         this.renderAnalytics();
+  32:         this.renderCapabilities();
+  33:         this.updateHealthIndicator();
+  34:         this.init();
+  35:     }
+  36: 
+  37:     init() {
+  38:         console.log('[AnomyMousDashboard] Init complete');
+  39:     }
+  40: 
+  41:     async loadHealth() {
+  42:         try {
+  43:             const res = await fetch('/health');
+  44:             if (!res.ok) throw new Error('HTTP ' + res.status);
+  45:             const d = await res.json();
+  46:             this.state.health = d.status === 'ok' ? 'healthy' : 'degraded';
+  47:             this.updateHealthIndicator();
+  48:         } catch (e) {
+  49:             console.error('[Health] Error:', e.message);
+  50:             this.state.health = 'unhealthy';
+  51:             this.updateHealthIndicator();
+  52:         }
+  53:     }
+  54: 
+  55:     updateHealthIndicator() {
+  56:         const i = document.getElementById('healthIndicator');
+  57:         if (!i) return;
+  58:         const d = i.querySelector('.health-dot'), t = i.querySelector('.health-text');
+  59:         if (!d || !t) return;
+  60:         const m = { healthy: 'Healthy', degraded: 'Degraded', unhealthy: 'Unhealthy', checking: 'Checking...' };
+  61:         d.className = 'health-dot ' + (this.state.health || 'checking');
+  62:         t.textContent = m[this.state.health] || 'Checking...';
+  63:     }
+  64: 
+  65:     async loadCapabilities() {
+  66:         try {
+  67:             const r = await fetch('/capabilities');
+  68:             if (!r.ok) throw new Error('HTTP ' + r.status);
+  69:             const d = await r.json();
+  70:             this.capabilities = d.capabilities || {};
+  71:         } catch(e) { this.capabilities = {}; }
+  72:     }
+  73: 
+  74:     renderCapabilities() {
+  75:         const c = document.getElementById('capabilitiesGrid');
+  76:         if (!c) return;
+  77:         if (!this.capabilities || this.capabilities.length === 0) {
+  78:             c.innerHTML = '<div class="cap-loading">Loading...</div>';
+  79:             return;
+  80:         }
+  81:         c.innerHTML = this.capabilities.map(x => 
+  82:             '<div class="cap-item enabled">\n                <div class="cap-name">' + (x.category || x.name || 'Unknown') + '</div>\n                <div class="cap-status">' + (x.intent || x.status || 'Active') + '</div></div>'
+  83:         ).join('');
+  84:     }
+  85: 
+  86:     async loadProviders() {
+  87:         try {
+  88:             const r = await fetch('/providers');
+  89:             if (!r.ok) throw new Error('HTTP ' + r.status);
+  90:             const d = await r.json();
+  91:             this.state.providers = d.providers || [];
+  92:         } catch(e) { this.state.providers = []; }
+  93:     }
+  94: 
+  95:     renderProviders() {
+  96:         const c = document.getElementById('providersList');
+  97:         if (!c) return;
+  98:         if (!this.state.providers || this.state.providers.length === 0) {
+  99:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 100:             return;
+ 101:         }
+ 102:         c.innerHTML = this.state.providers.map(p => 
+ 103:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 104:         ).join('');
+ 105:     }== 0) {
+ 106:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 107:             return;
+ 108:         }
+ 109:         c.innerHTML = this.state.providers.map(p => 
+ 110:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 111:         ).join('');
+ 112:     }== 0) {
+ 113:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 114:             return;
+ 115:         }
+ 116:         c.innerHTML = this.state.providers.map(p => 
+ 117:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 118:         ).join('');
+ 119:     }== 0) {
+ 120:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 121:             return;
+ 122:         }
+ 123:         c.innerHTML = this.state.providers.map(p => 
+ 124:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 125:         ).join('');
+ 126:     }
+ 127: 
+ 128:     async loadAnalytics() {
+ 129:         try {
+ 130:             const r = await fetch('/analytics');
+ 131:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 132:             const d = await r.json();
+ 133:             this.state.analytics = d || {};
+ 134:         } catch(e) { this.state.analytics = {}; }
+ 135:     }
+ 136: 
+ 137:     renderAnalytics() {
+ 138:         const c = document.getElementById('analyticsGrid');
+ 139:         if (!c) return;
+ 140:         const a = this.state.analytics || {};
+ 141:         if (!a.total_requests && a.total_requests !== 0) {
+ 142:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 143:             return;
+ 144:         }
+ 145:         const items = [
+ 146:             {label: 'Total Requests', value: a.total_requests || 0},
+ 147:             {label: 'Successful', value: a.successful_requests || 0},
+ 148:             {label: 'Failed', value: a.failed_requests || 0},
+ 149:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 150:         ];
+ 151:         c.innerHTML = items.map(x => 
+ 152:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 153:         ).join('');
+ 154:     }= 0) {
+ 155:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 156:             return;
+ 157:         }
+ 158:         c.innerHTML = this.state.providers.map(p => 
+ 159:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 160:         ).join('');
+ 161:     }
+ 162: 
+ 163:     async loadAnalytics() {
+ 164:         try {
+ 165:             const r = await fetch('/analytics');
+ 166:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 167:             const d = await r.json();
+ 168:             this.state.analytics = d || {};
+ 169:         } catch(e) { this.state.analytics = {}; }
+ 170:     }
+ 171: 
+ 172:     renderAnalytics() {
+ 173:         const c = document.getElementById('analyticsGrid');
+ 174:         if (!c) return;
+ 175:         const a = this.state.analytics || {};
+ 176:         if (!a.total_requests && a.total_requests !== 0) {
+ 177:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 178:             return;
+ 179:         }
+ 180:         const items = [
+ 181:             {label: 'Total Requests', value: a.total_requests || 0},
+ 182:             {label: 'Successful', value: a.successful_requests || 0},
+ 183:             {label: 'Failed', value: a.failed_requests || 0},
+ 184:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 185:         ];
+ 186:         c.innerHTML = items.map(x => 
+ 187:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 188:         ).join('');
+ 189:     }== 0) {
+ 190:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 191:             return;
+ 192:         }
+ 193:         c.innerHTML = this.state.providers.map(p => 
+ 194:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 195:         ).join('');
+ 196:     }
+ 197: 
+ 198:     async loadAnalytics() {
+ 199:         try {
+ 200:             const r = await fetch('/analytics');
+ 201:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 202:             const d = await r.json();
+ 203:             this.state.analytics = d || {};
+ 204:         } catch(e) { this.state.analytics = {}; }
+ 205:     }
+ 206: 
+ 207:     renderAnalytics() {
+ 208:         const c = document.getElementById('analyticsGrid');
+ 209:         if (!c) return;
+ 210:         const a = this.state.analytics || {};
+ 211:         if (!a.total_requests && a.total_requests !== 0) {
+ 212:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 213:             return;
+ 214:         }
+ 215:         const items = [
+ 216:             {label: 'Total Requests', value: a.total_requests || 0},
+ 217:             {label: 'Successful', value: a.successful_requests || 0},
+ 218:             {label: 'Failed', value: a.failed_requests || 0},
+ 219:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 220:         ];
+ 221:         c.innerHTML = items.map(x => 
+ 222:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 223:         ).join('');
+ 224:     }== 0) {
+ 225:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 226:             return;
+ 227:         }
+ 228:         c.innerHTML = this.state.providers.map(p => 
+ 229:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 230:         ).join('');
+ 231:     }
+ 232: 
+ 233:     async loadAnalytics() {
+ 234:         try {
+ 235:             const r = await fetch('/analytics');
+ 236:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 237:             const d = await r.json();
+ 238:             this.state.analytics = d || {};
+ 239:         } catch(e) { this.state.analytics = {}; }
+ 240:     }
+ 241: 
+ 242:     renderAnalytics() {
+ 243:         const c = document.getElementById('analyticsGrid');
+ 244:         if (!c) return;
+ 245:         const a = this.state.analytics || {};
+ 246:         if (!a.total_requests && a.total_requests !== 0) {
+ 247:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 248:             return;
+ 249:         }
+ 250:         const items = [
+ 251:             {label: 'Total Requests', value: a.total_requests || 0},
+ 252:             {label: 'Successful', value: a.successful_requests || 0},
+ 253:             {label: 'Failed', value: a.failed_requests || 0},
+ 254:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 255:         ];
+ 256:         c.innerHTML = items.map(x => 
+ 257:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 258:         ).join('');
+ 259:     }== 0) {
+ 260:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 261:             return;
+ 262:         }
+ 263:         c.innerHTML = this.state.providers.map(p => 
+ 264:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 265:         ).join('');
+ 266:     }= 0) {
+ 267:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 268:             return;
+ 269:         }
+ 270:         c.innerHTML = this.state.providers.map(p => 
+ 271:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 272:         ).join('');
+ 273:     }== 0) {
+ 274:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 275:             return;
+ 276:         }
+ 277:         c.innerHTML = this.state.providers.map(p => 
+ 278:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 279:         ).join('');
+ 280:     }== 0) {
+ 281:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 282:             return;
+ 283:         }
+ 284:         c.innerHTML = this.state.providers.map(p => 
+ 285:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 286:         ).join('');
+ 287:     }== 0) {
+ 288:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 289:             return;
+ 290:         }
+ 291:         c.innerHTML = this.state.providers.map(p => 
+ 292:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 293:         ).join('');
+ 294:     }
+ 295: 
+ 296:     async loadAnalytics() {
+ 297:         try {
+ 298:             const r = await fetch('/analytics');
+ 299:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 300:             const d = await r.json();
+ 301:             this.state.analytics = d || {};
+ 302:         } catch(e) { this.state.analytics = {}; }
+ 303:     }
+ 304: 
+ 305:     renderAnalytics() {
+ 306:         const c = document.getElementById('analyticsGrid');
+ 307:         if (!c) return;
+ 308:         const a = this.state.analytics || {};
+ 309:         if (!a.total_requests && a.total_requests !== 0) {
+ 310:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 311:             return;
+ 312:         }
+ 313:         const items = [
+ 314:             {label: 'Total Requests', value: a.total_requests || 0},
+ 315:             {label: 'Successful', value: a.successful_requests || 0},
+ 316:             {label: 'Failed', value: a.failed_requests || 0},
+ 317:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 318:         ];
+ 319:         c.innerHTML = items.map(x => 
+ 320:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 321:         ).join('');
+ 322:     }== 0) {
+ 323:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 324:             return;
+ 325:         }
+ 326:         c.innerHTML = this.state.providers.map(p => 
+ 327:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 328:         ).join('');
+ 329:     }
+ 330: 
+ 331:     async loadAnalytics() {
+ 332:         try {
+ 333:             const r = await fetch('/analytics');
+ 334:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 335:             const d = await r.json();
+ 336:             this.state.analytics = d || {};
+ 337:         } catch(e) { this.state.analytics = {}; }
+ 338:     }
+ 339: 
+ 340:     renderAnalytics() {
+ 341:         const c = document.getElementById('analyticsGrid');
+ 342:         if (!c) return;
+ 343:         const a = this.state.analytics || {};
+ 344:         if (!a.total_requests && a.total_requests !== 0) {
+ 345:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 346:             return;
+ 347:         }
+ 348:         const items = [
+ 349:             {label: 'Total Requests', value: a.total_requests || 0},
+ 350:             {label: 'Successful', value: a.successful_requests || 0},
+ 351:             {label: 'Failed', value: a.failed_requests || 0},
+ 352:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 353:         ];
+ 354:         c.innerHTML = items.map(x => 
+ 355:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 356:         ).join('');
+ 357:     }== 0) {
+ 358:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 359:             return;
+ 360:         }
+ 361:         c.innerHTML = this.state.providers.map(p => 
+ 362:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 363:         ).join('');
+ 364:     } 0) {
+ 365:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 366:             return;
+ 367:         }
+ 368:         c.innerHTML = this.state.providers.map(p => 
+ 369:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 370:         ).join('');
+ 371:     }
+ 372: 
+ 373:     async loadAnalytics() {
+ 374:         try {
+ 375:             const r = await fetch('/analytics');
+ 376:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 377:             const d = await r.json();
+ 378:             this.state.analytics = d || {};
+ 379:         } catch(e) { this.state.analytics = {}; }
+ 380:     }
+ 381: 
+ 382:     renderAnalytics() {
+ 383:         const c = document.getElementById('analyticsGrid');
+ 384:         if (!c) return;
+ 385:         const a = this.state.analytics || {};
+ 386:         if (!a.total_requests && a.total_requests !== 0) {
+ 387:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 388:             return;
+ 389:         }
+ 390:         const items = [
+ 391:             {label: 'Total Requests', value: a.total_requests || 0},
+ 392:             {label: 'Successful', value: a.successful_requests || 0},
+ 393:             {label: 'Failed', value: a.failed_requests || 0},
+ 394:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 395:         ];
+ 396:         c.innerHTML = items.map(x => 
+ 397:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 398:         ).join('');
+ 399:     }== 0) {
+ 400:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 401:             return;
+ 402:         }
+ 403:         c.innerHTML = this.state.providers.map(p => 
+ 404:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 405:         ).join('');
+ 406:     }
+ 407: 
+ 408:     async loadAnalytics() {
+ 409:         try {
+ 410:             const r = await fetch('/analytics');
+ 411:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 412:             const d = await r.json();
+ 413:             this.state.analytics = d || {};
+ 414:         } catch(e) { this.state.analytics = {}; }
+ 415:     }
+ 416: 
+ 417:     renderAnalytics() {
+ 418:         const c = document.getElementById('analyticsGrid');
+ 419:         if (!c) return;
+ 420:         const a = this.state.analytics || {};
+ 421:         if (!a.total_requests && a.total_requests !== 0) {
+ 422:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 423:             return;
+ 424:         }
+ 425:         const items = [
+ 426:             {label: 'Total Requests', value: a.total_requests || 0},
+ 427:             {label: 'Successful', value: a.successful_requests || 0},
+ 428:             {label: 'Failed', value: a.failed_requests || 0},
+ 429:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 430:         ];
+ 431:         c.innerHTML = items.map(x => 
+ 432:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 433:         ).join('');
+ 434:     }== 0) {
+ 435:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 436:             return;
+ 437:         }
+ 438:         c.innerHTML = this.state.providers.map(p => 
+ 439:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 440:         ).join('');
+ 441:     }
+ 442: 
+ 443:     async loadAnalytics() {
+ 444:         try {
+ 445:             const r = await fetch('/analytics');
+ 446:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 447:             const d = await r.json();
+ 448:             this.state.analytics = d || {};
+ 449:         } catch(e) { this.state.analytics = {}; }
+ 450:     }
+ 451: 
+ 452:     renderAnalytics() {
+ 453:         const c = document.getElementById('analyticsGrid');
+ 454:         if (!c) return;
+ 455:         const a = this.state.analytics || {};
+ 456:         if (!a.total_requests && a.total_requests !== 0) {
+ 457:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 458:             return;
+ 459:         }
+ 460:         const items = [
+ 461:             {label: 'Total Requests', value: a.total_requests || 0},
+ 462:             {label: 'Successful', value: a.successful_requests || 0},
+ 463:             {label: 'Failed', value: a.failed_requests || 0},
+ 464:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 465:         ];
+ 466:         c.innerHTML = items.map(x => 
+ 467:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 468:         ).join('');
+ 469:     }= 0) {
+ 470:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 471:             return;
+ 472:         }
+ 473:         c.innerHTML = this.state.providers.map(p => 
+ 474:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 475:         ).join('');
+ 476:     }
+ 477: 
+ 478:     renderAnalytics() {
+ 479:         const c = document.getElementById('analyticsGrid');
+ 480:         if (!c) return;
+ 481:         const a = this.state.analytics || {};
+ 482:         if (!a.total_requests && a.total_requests !== 0) {
+ 483:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 484:             return;
+ 485:         }
+ 486:         const items = [
+ 487:             {label: 'Total Requests', value: a.total_requests || 0},
+ 488:             {label: 'Successful', value: a.successful_requests || 0},
+ 489:             {label: 'Failed', value: a.failed_requests || 0},
+ 490:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 491:         ];
+ 492:         c.innerHTML = items.map(x => 
+ 493:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 494:         ).join('');
+ 495:     }= 0) {
+ 496:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 497:             return;
+ 498:         }
+ 499:         c.innerHTML = this.state.providers.map(p => 
+ 500:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 501:         ).join('');
+ 502:     }
+ 503: 
+ 504:     renderAnalytics() {
+ 505:         const c = document.getElementById('analyticsGrid');
+ 506:         if (!c) return;
+ 507:         const a = this.state.analytics || {};
+ 508:         if (!a.total_requests && a.total_requests !== 0) {
+ 509:             c.innerHTML = '<div class="analytics-loading">Loading analytics...</div>';
+ 510:             return;
+ 511:         }
+ 512:         const items = [
+ 513:             {label: 'Total Requests', value: a.total_requests || 0},
+ 514:             {label: 'Successful', value: a.successful_requests || 0},
+ 515:             {label: 'Failed', value: a.failed_requests || 0},
+ 516:             {label: 'Success Rate', value: ((a.success_rate || 0) * 100).toFixed(1) + '%'}
+ 517:         ];
+ 518:         c.innerHTML = items.map(x => 
+ 519:             '<div class="analytics-card">\n                <div class="analytics-value">' + x.value + '</div>\n                <div class="analytics-label">' + x.label + '</div>\n            </div>'
+ 520:         ).join('');
+ 521:     }= 0) {
+ 522:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 523:             return;
+ 524:         }
+ 525:         c.innerHTML = this.state.providers.map(p => 
+ 526:             '<div class="provider-card">\n                <div class="provider-header">\n                    <div class="provider-name">' + (p.display_name || p.name || 'Unknown') + '</div>\n                    <div class="provider-status ' + (p.requires_auth ? 'requires-auth' : 'no-auth') + '">\n                        ' + (p.requires_auth ? 'Auth Required' : 'No Auth') + '\n                    </div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Endpoint</div>\n                    <div class="provider-detail-value">' + (p.endpoint || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Rate Limit</div>\n                    <div class="provider-detail-value">' + (p.rate_limit_info || 'N/A') + '</div>\n                </div>\n                <div class="provider-details">\n                    <div class="provider-detail-label">Models</div>\n                    <div class="provider-detail-value">' + (p.model_count || 0) + '</div>\n                </div>\n            </div>'
+ 527:         ).join('');
+ 528:     }
+ 529:         if (!this.state.providers || !this.state.providers.length) {
+ 530:             c.innerHTML = '<div class="loading">No providers available</div>';
+ 531:             return;
+ 532:         }
+ 533:         c.innerHTML = this.state.providers.map(p => {
+ 534:             const n = p.name, cfg = {groq: 'Groq', google: 'GoogleAI', cerebras: 'Cerebras', mistral: 'Mistral', openrouter: 'OpenRouter'}[n] || n;
+ 535:             return '<div class="provider-card"><div class="provider-header">\n                <span class="provider-name">' + cfg + '</span><span class="provider-status unavailable">Requires Auth</span></div>\n                <div class="provider-details"><div class="provider-detail"><span class="provider-detail-label">Models:</span><span class="provider-detail-value">' + (p.model_count||0) + '</span></div>\n                <div class="provider-detail"><span class="provider-detail-label">Auth:</span><span class="provider-detail-value">' + (p.requires_auth?'required':'none') + '</span></div></div></div>';
+ 536:         }).join('') || '<div class="loading">Loading...</div>';
+ 537:     }
+ 538: 
+ 539:     async loadAnalytics() {
+ 540:         try {
+ 541:             const r = await fetch('/analytics');
+ 542:             if (!r.ok) throw new Error('HTTP ' + r.status);
+ 543:             this.state.analytics = await r.json();
+ 544:         } catch(e) { this.state.analytics = {total_requests:0, success_rate:0}; }
+ 545:     }
+ 546: 
+ 547:     renderAnalytics() {
+ 548:         const c = document.getElementById('analyticsGrid');
+ 549:         if (!c) return;
+ 550:         const t = this.state.analytics.total_requests || 0;
+ 551:         const r = this.state.analytics.success_rate || 0;
+ 552:         const p = this.state.providers.length;
+ 553:         c.innerHTML = `
+ 554:             <div class="analytics-card"><div class="analytics-value">${t}</div><div class="analytics-label">Total Tasks</div></div>
+ 555:             <div class="analytics-card"><div class="analytics-value">${(r*100).toFixed(1)}%</div><div class="analytics-label">Success Rate</div></div>
+ 556:             <div class="analytics-card"><div class="analytics-value">${p}</div><div class="analytics-label">Providers</div></div>
+ 557:         `;
+ 558:     }
+ 559: 
+ 560:     submitTask() {
+ 561:         if (this.isSubmitting) return;
+ 562:         const inp = document.getElementById('taskInput');
+ 563:         const out = document.getElementById('statusOutput');
+ 564:         if (!inp || !out) return;
+ 565:         const t = inp.value.trim();
+ 566:         if (!t) {
+ 567:             out.innerHTML = '<span class="error-message">Error: Task cannot be empty</span>';
+ 568:             out.className = 'status-output error';
+ 569:             return;
+ 570:         }
+ 571:         this.isSubmitting = true;
+ 572:         this.state.taskStatus = 'submitting';
+ 573:         out.className = 'status-output pending';
+ 574:         out.innerHTML = '<span class="error-message">Submitting...</span>';
+ 575:         this.performSubmission(inp, out);
+ 576:     }
+ 577: 
+ 578:     async performSubmission(inp, out) {
+ 579:         try {
+ 580:             const r = await fetch('/task', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({task: inp.value}) });
+ 581:             if (r.status >= 400) {
+ 582:                 let e = 'HTTP ' + r.status;
+ 583:                 try { const d = await r.json(); e += ': ' + (d.error || d.message || ''); } catch { e += ': ' + r.statusText; }
+ 584:                 throw new Error(e);
+ 585:             }
+ 586:             const d = await r.json();
+ 587:             if (d.status !== 'accepted') throw new Error('Invalid: ' + d.status);
+ 588:             out.innerHTML = '<span class="error-message">Task accepted... Polling...</span>';
+ 589:             await this.pollStatus(out);
+ 590:         } catch(e) {
+ 591:             console.error('[Task] Error:', e);
+ 592:             this.isSubmitting = false;
+ 593:             this.state.taskStatus = 'failed';
+ 594:             out.className = 'status-output error';
+ 595:             out.innerHTML = '<span class="error-message">Error: ' + String(e) + '</span>';
+ 596:         }
+ 597:     }
+ 598: 
+ 599:     async pollStatus(out) {
+ 600:         this.pollingAttempts = 0;
+ 601:         const start = Date.now();
+ 602:         clearInterval(this.pollingInterval);
+ 603:         this.pollingInterval = setInterval(async () => {
+ 604:             this.pollingAttempts++;
+ 605:             if (Date.now() - start > 60000) {
+ 606:                 clearInterval(this.pollingInterval);
+ 607:                 this.isSubmitting = false;
+ 608:                 out.className = 'status-output error';
+ 609:                 out.innerHTML = '<span class="error-message">Task polling timed out</span>';
+ 610:                 return;
+ 611:             }
+ 612:             try {
+ 613:                 const r = await fetch('/status');
+ 614:                 if (!r.ok) throw new Error('HTTP ' + r.status);
+ 615:                 const d = await r.json();
+ 616:                 if (d.status === 'no_result') return;
+ 617:                 clearInterval(this.pollingInterval);
+ 618:                 this.isSubmitting = false;
+ 619:                 this.state.taskStatus = d.status;
+ 620:                 out.className = 'status-output ' + d.status;
+ 621:                 const outText = d.status === 'success' ? 'Success!' : 'Failed!';
+ 622:                 const outBody = d.output || d.result || d.execution || d.error || JSON.stringify(d);
+ 623:                 out.innerHTML = '<span class="error-message">' + outText + '</span><pre class="status-result">' + outBody + '</pre>';
+ 624:             } catch(e) {
+ 625:                 clearInterval(this.pollingInterval);
+ 626:                 this.isSubmitting = false;
+ 627:                 this.state.taskStatus = 'failed';
+ 628:                 out.className = 'status-output error';
+ 629:                 out.innerHTML = '<span class="error-message">Polling error: ' + String(e) + '</span>';
+ 630:             }
+ 631:         }, 1000);
+ 632:     }
+ 633: 
+ 634:     setupEventListeners() {
+ 635:         const b = document.getElementById('runBtn');
+ 636:         if (b) b.addEventListener('click', () => this.submitTask());
+ 637:     }
+ 638: }
+ 639: 
+ 640: if (typeof document !== 'undefined') {
+ 641:     if (document.readyState === 'loading') {
+ 642:         document.addEventListener('DOMContentLoaded', () => new AnomyMousDashboard());
+ 643:     } else { new AnomyMousDashboard(); }
+ 644: }
