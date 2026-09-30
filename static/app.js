@@ -6,13 +6,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('ANOMYMOUS Dashboard initialized');
     
-    // Load capabilities
+    // Load all data
     await loadCapabilities();
-    
-    // Load providers
     await loadProviders();
-    
-    // Load analytics
     await loadAnalytics();
     
     // Setup task submission
@@ -27,11 +23,11 @@ async function loadCapabilities() {
         const response = await fetch('/capabilities');
         const data = await response.json();
         
-        const capabilitiesDiv = document.querySelector('.capabilities-content') || 
-                                document.querySelector('[data-section="capabilities"]');
+        // Target the correct element ID from index.html
+        const capGrid = document.getElementById('capabilitiesGrid');
         
-        if (capabilitiesDiv) {
-            let html = '<ul style="list-style: none; padding: 0;">';
+        if (capGrid) {
+            let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
             html += `<li>✅ Local Filesystem: ${data.local_filesystem ? 'Yes' : 'No'}</li>`;
             html += `<li>✅ Subprocess Execution: ${data.subprocess_execution ? 'Yes' : 'No'}</li>`;
             html += `<li>✅ Workspace Operations: ${data.workspace_operations ? 'Yes' : 'No'}</li>`;
@@ -39,15 +35,17 @@ async function loadCapabilities() {
             html += `<li>✅ Persistent State: ${data.persistent_state ? 'Yes' : 'No'}</li>`;
             html += `<li>✅ Cloud Deployment: ${data.cloud_deployment ? 'Yes' : 'No'}</li>`;
             html += '</ul>';
-            html += `<p><em>${data.note}</em></p>`;
-            capabilitiesDiv.innerHTML = html;
+            html += `<p style="font-size: 0.9em; color: #666;"><em>${data.note}</em></p>`;
+            capGrid.innerHTML = html;
+            console.log('Capabilities loaded:', data);
+        } else {
+            console.warn('Capabilities grid element not found');
         }
     } catch (error) {
         console.error('Error loading capabilities:', error);
-        const capabilitiesDiv = document.querySelector('.capabilities-content') || 
-                                document.querySelector('[data-section="capabilities"]');
-        if (capabilitiesDiv) {
-            capabilitiesDiv.innerHTML = `<p style="color: red;">Error loading capabilities: ${error.message}</p>`;
+        const capGrid = document.getElementById('capabilitiesGrid');
+        if (capGrid) {
+            capGrid.innerHTML = `<p style="color: red;">Error loading capabilities: ${error.message}</p>`;
         }
     }
 }
@@ -60,32 +58,39 @@ async function loadProviders() {
         const response = await fetch('/providers');
         const data = await response.json();
         
-        const providersDiv = document.querySelector('.providers-content') || 
-                             document.querySelector('[data-section="providers"]');
+        // Target the correct element ID from index.html
+        const providersList = document.getElementById('providersList');
         
-        if (providersDiv && data.providers && data.providers.length > 0) {
-            let html = `<p>Available Providers: <strong>${data.count}</strong></p>`;
-            html += '<ul>';
-            data.providers.forEach(provider => {
-                html += `
-                    <li>
-                        <strong>${provider.display_name}</strong>
-                        <br/>
-                        <small>Provider: ${provider.name} | Models: ${provider.model_count}</small>
-                    </li>
-                `;
-            });
-            html += '</ul>';
-            providersDiv.innerHTML = html;
-        } else if (providersDiv) {
-            providersDiv.innerHTML = '<p>No providers configured. Add API keys to enable.</p>';
+        if (providersList) {
+            if (data.providers && data.providers.length > 0) {
+                let html = `<p><strong>Available Providers: ${data.count}</strong></p>`;
+                html += '<ul style="list-style: none; padding: 0;">';
+                data.providers.forEach(provider => {
+                    html += `
+                        <li style="margin-bottom: 10px; padding: 8px; background: #f9f9f9; border-radius: 4px;">
+                            <strong>${provider.display_name}</strong>
+                            <br/>
+                            <small style="color: #666;">
+                                ${provider.name} | ${provider.model_count} models
+                            </small>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                providersList.innerHTML = html;
+                console.log('Providers loaded:', data);
+            } else {
+                providersList.innerHTML = '<p style="color: #999;">No providers configured. Add API keys to enable.</p>';
+                console.log('No providers available');
+            }
+        } else {
+            console.warn('Providers list element not found');
         }
     } catch (error) {
         console.error('Error loading providers:', error);
-        const providersDiv = document.querySelector('.providers-content') || 
-                             document.querySelector('[data-section="providers"]');
-        if (providersDiv) {
-            providersDiv.innerHTML = `<p style="color: red;">Error loading providers: ${error.message}</p>`;
+        const providersList = document.getElementById('providersList');
+        if (providersList) {
+            providersList.innerHTML = `<p style="color: red;">Error loading providers: ${error.message}</p>`;
         }
     }
 }
@@ -98,21 +103,23 @@ async function loadAnalytics() {
         const response = await fetch('/analytics');
         const data = await response.json();
         
-        const analyticsDiv = document.querySelector('.analytics-content') || 
-                             document.querySelector('[data-section="analytics"]');
+        // Target the correct element ID from index.html
+        const analyticsGrid = document.getElementById('analyticsGrid');
         
-        if (analyticsDiv) {
-            let html = '<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">';
+        if (analyticsGrid) {
+            let html = '<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto; max-height: 250px; font-size: 0.85em;">';
             html += JSON.stringify(data, null, 2);
             html += '</pre>';
-            analyticsDiv.innerHTML = html;
+            analyticsGrid.innerHTML = html;
+            console.log('Analytics loaded:', data);
+        } else {
+            console.warn('Analytics grid element not found');
         }
     } catch (error) {
         console.error('Error loading analytics:', error);
-        const analyticsDiv = document.querySelector('.analytics-content') || 
-                             document.querySelector('[data-section="analytics"]');
-        if (analyticsDiv) {
-            analyticsDiv.innerHTML = `<p style="color: red;">Error loading analytics: ${error.message}</p>`;
+        const analyticsGrid = document.getElementById('analyticsGrid');
+        if (analyticsGrid) {
+            analyticsGrid.innerHTML = `<p style="color: red;">Error loading analytics: ${error.message}</p>`;
         }
     }
 }
@@ -121,25 +128,22 @@ async function loadAnalytics() {
  * Setup task submission handler
  */
 function setupTaskSubmission() {
-    // Find the RUN button and task input
-    const buttons = document.querySelectorAll('button');
-    let runButton = null;
+    // Get elements by their IDs from index.html
+    const taskInput = document.getElementById('taskInput');
+    const runBtn = document.getElementById('runBtn');
+    const statusOutput = document.getElementById('statusOutput');
     
-    for (let btn of buttons) {
-        if (btn.textContent.includes('RUN')) {
-            runButton = btn;
-            break;
-        }
-    }
-    
-    const taskInput = document.querySelector('input[type="text"]');
-    
-    if (!runButton || !taskInput) {
-        console.warn('Run button or task input not found');
+    if (!taskInput || !runBtn || !statusOutput) {
+        console.warn('Task submission elements not found', {
+            taskInput: !!taskInput,
+            runBtn: !!runBtn,
+            statusOutput: !!statusOutput
+        });
         return;
     }
     
-    runButton.addEventListener('click', async (e) => {
+    // Click handler
+    runBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         
         const taskText = taskInput.value.trim();
@@ -149,24 +153,27 @@ function setupTaskSubmission() {
             return;
         }
         
-        await submitTask(taskText, runButton);
+        await submitTask(taskText, runBtn, statusOutput);
     });
     
-    // Allow Enter key to submit
+    // Enter key handler
     taskInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            runButton.click();
+        if (e.key === 'Enter' && e.ctrlKey) {
+            runBtn.click();
         }
     });
+    
+    console.log('Task submission setup complete');
 }
 
 /**
  * Submit a task and handle the response
  */
-async function submitTask(taskText, runButton) {
-    const originalText = runButton.textContent;
-    runButton.disabled = true;
-    runButton.textContent = 'Running...';
+async function submitTask(taskText, runBtn, statusOutput) {
+    const originalText = runBtn.textContent;
+    runBtn.disabled = true;
+    runBtn.textContent = 'Running...';
+    statusOutput.textContent = '⏳ Submitting task...';
     
     try {
         const response = await fetch('/task', {
@@ -180,9 +187,9 @@ async function submitTask(taskText, runButton) {
         const data = await response.json();
         
         if (response.ok || response.status === 202) {
-            updateExecutionStatus('✅ Task submitted. Processing...');
+            statusOutput.textContent = '✅ Task submitted. Processing...';
             
-            // Poll for status every 2 seconds (max 30 seconds)
+            // Poll for status every 2 seconds
             let attempts = 0;
             const maxAttempts = 15;
             
@@ -193,47 +200,26 @@ async function submitTask(taskText, runButton) {
                     const statusResponse = await fetch('/status');
                     const statusData = await statusResponse.json();
                     
+                    // Update display
                     if (statusData.status && statusData.status !== 'no_result') {
                         clearInterval(pollInterval);
-                        
-                        let html = '<div style="background: #f0f0f0; padding: 10px; border-radius: 4px;">';
-                        html += '<h4>Task Result:</h4>';
-                        html += '<pre style="overflow: auto; max-height: 300px;">';
-                        html += JSON.stringify(statusData, null, 2);
-                        html += '</pre>';
-                        html += '</div>';
-                        
-                        updateExecutionStatus(html);
+                        statusOutput.textContent = JSON.stringify(statusData, null, 2);
                     } else if (attempts >= maxAttempts) {
                         clearInterval(pollInterval);
-                        updateExecutionStatus('⏱️ Task is taking longer than expected. Check back soon.');
+                        statusOutput.textContent = '⏱️ Task is taking longer than expected. Check back soon.';
                     }
                 } catch (error) {
                     console.error('Error polling status:', error);
                 }
             }, 2000);
         } else {
-            updateExecutionStatus(`❌ Error: ${data.error || 'Unknown error'} (Status: ${response.status})`);
+            statusOutput.textContent = `❌ Error: ${data.error || 'Unknown error'} (Status: ${response.status})`;
         }
     } catch (error) {
         console.error('Error submitting task:', error);
-        updateExecutionStatus(`❌ Error: ${error.message}`);
+        statusOutput.textContent = `❌ Error: ${error.message}`;
     } finally {
-        runButton.disabled = false;
-        runButton.textContent = originalText;
-    }
-}
-
-/**
- * Update execution status display
- */
-function updateExecutionStatus(message) {
-    const statusDiv = document.querySelector('.status-content') || 
-                      document.querySelector('[data-section="status"]');
-    
-    if (statusDiv) {
-        statusDiv.innerHTML = message;
-    } else {
-        console.warn('Status display element not found');
+        runBtn.disabled = false;
+        runBtn.textContent = originalText;
     }
 }
