@@ -15,10 +15,15 @@ class WorkspaceManager:
         """
         # Remove leading slashes and handle '..'
         normalized_rel = os.path.normpath(relative_path).lstrip(os.sep).lstrip("/")
+        
+        # Check for path escape attempts
         if normalized_rel.startswith("..") or os.path.isabs(normalized_rel):
-             # Fallback to base name if it tries to escape
-             normalized_rel = os.path.basename(normalized_rel)
-             
+            raise ValueError(f"Path escape detected: {relative_path}")
+            
+        # Also check for any '..' components in the path
+        if ".." in normalized_rel.split(os.sep):
+            raise ValueError(f"Path escape detected: {relative_path}")
+            
         full_path = os.path.abspath(os.path.join(self.root_dir, normalized_rel))
         
         if not full_path.startswith(self.root_dir):

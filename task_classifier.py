@@ -112,3 +112,19 @@ class TaskClassifier:
             "normalized_task": normalized_text,
             "verification": verification
         }
+
+    def get_all_capabilities(self) -> list:
+        """Return list of all available capabilities (categories + intents)."""
+        return [
+            {"category": "simple", "intent": "generic", "description": "Simple text-based task"},
+            {"category": "testing", "intent": "testing", "description": "Testing tasks"},
+            {"category": "debugging", "intent": "debugging", "description": "Debugging tasks"},
+            {"category": "frontend", "intent": "website", "description": "Frontend/website tasks"},
+            {"category": "frontend", "intent": "generic", "description": "General frontend tasks"},
+            {"category": "backend", "intent": "api", "description": "Backend API tasks"},
+            {"category": "backend", "intent": "backend_service", "description": "Backend service tasks"},
+            {"category": "full_stack", "intent": "web_app", "description": "Full-stack web applications"},
+            {"category": "refactoring", "intent": "refactoring", "description": "Code refactoring tasks"},
+            {"category": "research", "intent": "research", "description": "Research tasks"},
+            {"category": "complex", "intent": "complex", "description": "Complex multi-step tasks"}
+        ]

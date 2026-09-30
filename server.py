@@ -125,36 +125,58 @@ class SimpleHandler(BaseHTTPRequestHandler):
             self._set_json(200)
             summary = analytics.get_summary()
             self.wfile.write(json.dumps(summary, indent=2).encode())
+        elif parsed.path == "/":
+            # Serve the dashboard UI
+            self._serve_static("index.html", "text/html")
+        elif parsed.path == "/capabilities":
+            # Return available capabilities from the orchestrator
+            orchestrator = _get_orchestrator()
+            if orchestrator is None:
+                self._set_json(503)
+                self.wfile.write(json.dumps({"error": "No orchestrator available"}).encode())
+                return
+            # Get capabilities from the task classifier
+            capabilities = orchestrator.task_classifier.get_all_capabilities()
+            self._set_json(200)
+            self.wfile.write(json.dumps({
+                "capabilities": capabilities,
+                "count": len(capabilities)
+            }, indent=2).encode())
         elif parsed.path.startswith("/static/"):
             # Serve static files from the static/ directory
             filename = parsed.path[len("/static/"):]
-            # Security: prevent directory traversal
-            if ".." in filename or filename.startswith("/"):
-                self.send_error(403, "Forbidden")
-                return
-            static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-            file_path = os.path.normpath(os.path.join(static_dir, filename))
-            if not file_path.startswith(static_dir):
-                self.send_error(403, "Forbidden")
-                return
-            if not os.path.isfile(file_path):
-                self.send_error(404, "File not found")
-                return
-            self.send_response(200)
-            # Basic content type detection
-            if filename.endswith(".html"):
-                self.send_header("Content-Type", "text/html")
-            elif filename.endswith(".css"):
-                self.send_header("Content-Type", "text/css")
-            elif filename.endswith(".js"):
-                self.send_header("Content-Type", "application/javascript")
-            else:
-                self.send_header("Content-Type", "application/octet-stream")
-            self.end_headers()
-            with open(file_path, "rb") as f:
-                self.wfile.write(f.read())
         else:
             self.send_error(404, "Not found")
+
+    def _serve_static(self, filename, content_type=None):
+        """Serve a static file from the static directory."""
+        # Security: prevent directory traversal
+        if ".." in filename or filename.startswith("/"):
+            self.send_error(403, "Forbidden")
+            return
+        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+        file_path = os.path.normpath(os.path.join(static_dir, filename))
+        if not file_path.startswith(static_dir):
+            self.send_error(403, "Forbidden")
+            return
+        if not os.path.isfile(file_path):
+            self.send_error(404, "File not found")
+            return
+        self.send_response(200)
+        # Basic content type detection
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        elif filename.endswith(".html"):
+            self.send_header("Content-Type", "text/html")
+        elif filename.endswith(".css"):
+            self.send_header("Content-Type", "text/css")
+        elif filename.endswith(".js"):
+            self.send_header("Content-Type", "application/javascript")
+        else:
+            self.send_header("Content-Type", "application/octet-stream")
+        self.end_headers()
+        with open(file_path, "rb") as f:
+            self.wfile.write(f.read())
 
     def do_POST(self):
         parsed = urlparse(self.path)

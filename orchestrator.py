@@ -86,6 +86,18 @@ class Orchestrator:
             execution_result = self.action_executor.execute_actions(actions)
             print(f"Execution result: {execution_result}")
             
+            # Check if execution failed - if so, don't proceed to verification
+            if execution_result.get("status") == "error":
+                print(f"Execution failed: {execution_result.get('error')}")
+                if attempt == max_attempts:
+                    return self._create_final_result(
+                        "failed",
+                        execution=execution_result,
+                        verification=None,
+                        diagnostics=[f"Execution failed: {execution_result.get('error')}"]
+                    )
+                continue
+            
             # Verify the result
             verification_result = self.verifier.verify(task_classification, task_text)
             print(f"Verification result: {verification_result}")
@@ -106,7 +118,7 @@ class Orchestrator:
                 print(f"Verification result is successful\nVerification: {verification_result}\n")
                 return self._create_final_result(
                     "success",
-                    execution=llm_result,
+                    execution=execution_result,
                     verification=verification_result,
                     diagnostics=["Task completed successfully"]
                 )
@@ -116,7 +128,7 @@ class Orchestrator:
             if attempt == max_attempts:
                 return self._create_final_result(
                     "failed",
-                    execution=llm_result,
+                    execution=execution_result,
                     verification=verification_result,
                     diagnostics=[f"Verification failed after {max_attempts} attempts"]
                 )

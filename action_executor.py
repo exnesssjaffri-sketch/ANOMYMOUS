@@ -93,11 +93,13 @@ class ActionExecutor:
         for action in actions:
             result = self.execute_action(action)
             results.append(result)
-            if result["status"] == "error" and action.get("critical", True):
+            # Check for failure: status can be 'error' or 'failed' (from command execution)
+            is_failure = result["status"] in ("error", "failed")
+            if is_failure and action.get("critical", True):
                 return {
                     "status": "error",
-                    "error": result["error"],
-                    "output": None,
+                    "error": result.get("error") or f"Command failed with returncode {result.get('returncode', -1)}",
+                    "output": result.get("output"),
                     "results": results
                 }
         return {

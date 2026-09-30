@@ -70,17 +70,9 @@ def create_transport(provider_name, api_key=None, endpoint=None):
             )
 
     # Create standard transport
-    # Production MUST NOT silently fall back to MockTransport or real transports
-    if provider_name in ["kilo", "llm7"] and not key:
-        # Providers that support anonymous access must still get a real transport
-        # (not MockTransport) for production
-        raise ValueError(
-            f"Provider '{provider_name}' requires an API key for production use. "
-            f"Please set {config.auth_env_var} environment variable."
-        )
-    else:
-        from transport import RealHTTPTransport
-        return RealHTTPTransport(url, key or "")
+    # Production MUST NOT silently fall back to MockTransport
+    from transport import RealHTTPTransport
+    return RealHTTPTransport(url, key or "")
 
 
 def create_anonymous_transport(provider_name, config):
