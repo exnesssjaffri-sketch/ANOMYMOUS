@@ -11,24 +11,36 @@ class WorkspaceManager:
 
     def _safe_path(self, relative_path: str) -> str:
         """
-        Normalizes the path and ensures it's within the workspace boundary.
+        Normalize a workspace-relative path and enforce the boundary.
+
+        commonpath avoids sibling-prefix mistakes (for example, /work vs
+        /workspace-evil), while realpath also resolves symlinks before the
+        boundary check.
         """
-        # Remove leading slashes and handle '..'
-        normalized_rel = os.path.normpath(relative_path).lstrip(os.sep).lstrip("/")
-        
-        # Check for path escape attempts
-        if normalized_rel.startswith("..") or os.path.isabs(normalized_rel):
+        if not isinstance(relative_path, str) or not relative_path:
+            raise ValueError("A non-empty relative path is required")
+
+        # Reject absolute paths and parent traversal rather than silently
+        # rewriting them into a different path.
+        if os.path.isabs(relative_path) or os.path.splitdrive(relative_path)[0]:
             raise ValueError(f"Path escape detected: {relative_path}")
-            
-        # Also check for any '..' components in the path
-        if ".." in normalized_rel.split(os.sep):
+
+        normalized_rel = os.path.normpath(relative_path)
+        components = normalized_rel.replace("\\", "/").split("/")
+        if normalized_rel in (".", ""):
+            normalized_rel = "."
+        elif any(part == ".." for part in components):
             raise ValueError(f"Path escape detected: {relative_path}")
-            
-        full_path = os.path.abspath(os.path.join(self.root_dir, normalized_rel))
-        
-        if not full_path.startswith(self.root_dir):
+
+        root = os.path.realpath(self.root_dir)
+        full_path = os.path.realpath(os.path.join(root, normalized_rel))
+        try:
+            if os.path.commonpath([root, full_path]) != root:
+                raise ValueError(f"Path escape detected: {relative_path}")
+        except ValueError:
+            # commonpath raises when paths are on different drives.
             raise ValueError(f"Path escape detected: {relative_path}")
-            
+
         return full_path
 
     def write_file(self, path: str, content: str):
