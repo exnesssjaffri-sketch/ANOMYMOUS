@@ -93,7 +93,36 @@ class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
 
-        if parsed.path == "/health":
+        # Serve the actual dashboard at the documented root URL.
+        if parsed.path == "/":
+            dashboard_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "static", "index.html"
+            )
+            if not os.path.isfile(dashboard_path):
+                self.send_error(500, "Dashboard file is missing")
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            with open(dashboard_path, "rb") as dashboard_file:
+                self.wfile.write(dashboard_file.read())
+
+        elif parsed.path == "/favicon.ico":
+            favicon_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "static", "favicon.ico"
+            )
+            if os.path.isfile(favicon_path):
+                self.send_response(200)
+                self.send_header("Content-Type", "image/x-icon")
+                self.end_headers()
+                with open(favicon_path, "rb") as favicon_file:
+                    self.wfile.write(favicon_file.read())
+            else:
+                # A missing optional favicon must not produce noisy 404 logs.
+                self.send_response(204)
+                self.end_headers()
+
+        elif parsed.path == "/health":
             self._set_json(200)
             self.wfile.write(json.dumps({"status": "ok"}).encode())
 
